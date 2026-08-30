@@ -177,6 +177,10 @@ dependencies {
     // to arrive transitively via media3-cast, which Wear does not need; declare it directly.
     implementation(libs.media.compat)
 
+    // The service/ViewModel layer talks to the UI over LocalBroadcastManager. It used to arrive
+    // transitively through appcompat, which the Compose conversion dropped.
+    implementation(libs.localbroadcastmanager)
+
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)

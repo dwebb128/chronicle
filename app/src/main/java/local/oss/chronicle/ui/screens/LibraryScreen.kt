@@ -31,7 +31,7 @@ import local.oss.chronicle.ui.rotaryScrollable
  * [local.oss.chronicle.injection.components.AppComponent]-scoped singletons, so — unlike
  * [BookDetailsScreen]/[NowPlayingScreen]/[SettingsScreen] — its `Factory` is constructed directly
  * from [Injector] rather than via an `ActivityComponent` accessor; no Activity-scoped dependency
- * justifies adding one, and doing so would mean touching `injection/**`, which this wave does not
+ * justifies adding one, and doing so would mean touching the `injection` package, which this wave does not
  * own.
  */
 @Composable

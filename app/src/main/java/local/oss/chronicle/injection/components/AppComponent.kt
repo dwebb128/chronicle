@@ -14,6 +14,7 @@ import local.oss.chronicle.data.sources.plex.*
 import local.oss.chronicle.features.account.AccountManager
 import local.oss.chronicle.features.account.ActiveLibraryProvider
 import local.oss.chronicle.features.currentlyplaying.CurrentlyPlaying
+import local.oss.chronicle.features.player.AudioOutputMonitor
 import local.oss.chronicle.injection.modules.AppModule
 import java.io.File
 import javax.inject.Singleton

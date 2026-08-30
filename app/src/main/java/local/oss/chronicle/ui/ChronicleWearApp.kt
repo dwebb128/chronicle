@@ -45,7 +45,7 @@ val LocalActivityComponent = staticCompositionLocalOf<ActivityComponent> {
  *
  * This is a WAVE 1 skeleton (see PLAN.md section 12): it wires the Scaffold, theme, and the full
  * [SwipeDismissableNavHost] route table from PLAN.md section 5.3, but the screen composables
- * themselves (`ui/screens/*.kt`) are built by Wave 2a. Each `composable(...)` block below is a
+ * themselves (the files in `ui/screens`) are built by Wave 2a. Each `composable(...)` block below is a
  * forward reference to a not-yet-created function; expected signatures are documented next to
  * each screen import site below and MUST be treated as a contract, not a suggestion, when Wave 2a
  * lands those files — nav argument extraction (bookId) already happens here and should not be
