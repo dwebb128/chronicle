@@ -194,8 +194,15 @@ class SharedPreferencesPrefsRepo
             get() {
                 val syncLoc = sharedPreferences.getString(KEY_SYNC_DIR_PATH, "")
                 return if (syncLoc.isNullOrEmpty()) {
-                    /** Set default location to first location in [AppComponent.externalDeviceDirs] */
-                    val deviceStorage = Injector.get().externalDeviceDirs().first()
+                    /**
+                     * Set default location to first location in [AppComponent.externalDeviceDirs].
+                     * [android.content.Context.getExternalFilesDirs] can return an empty list on
+                     * some devices (observed as a risk on Wear OS hardware), so fall back to
+                     * internal storage rather than crash with [NoSuchElementException].
+                     */
+                    val deviceStorage =
+                        Injector.get().externalDeviceDirs().firstOrNull()
+                            ?: Injector.get().internalFilesDir()
                     sharedPreferences.edit()
                         .putString(KEY_SYNC_DIR_PATH, deviceStorage.absolutePath)
                         .apply()
@@ -203,7 +210,8 @@ class SharedPreferencesPrefsRepo
                 } else {
                     Injector.get().externalDeviceDirs()
                         .firstOrNull { it.absolutePath == syncLoc }
-                        ?: Injector.get().externalDeviceDirs().first()
+                        ?: Injector.get().externalDeviceDirs().firstOrNull()
+                        ?: Injector.get().internalFilesDir()
                 }
             }
             set(value) =

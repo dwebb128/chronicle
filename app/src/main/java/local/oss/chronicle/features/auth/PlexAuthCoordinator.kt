@@ -9,51 +9,69 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
+import local.oss.chronicle.data.sources.plex.PlexLoginService
+import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * State machine coordinator for Chrome Custom Tabs OAuth flow.
+ * State machine coordinator for the plex.tv/link short-code auth flow.
  *
  * This coordinator manages the entire authentication lifecycle:
- * 1. Creates a PIN via Plex API
- * 2. Builds OAuth URL with [PlexAuthUrlBuilder]
- * 3. Signals UI to launch Chrome Custom Tabs (via state change)
- * 4. Polls Plex API for authentication token
- * 5. Handles browser return callback to expedite polling
- * 6. Enforces 2-minute timeout
+ * 1. Creates a plain (non-`strong`) PIN via [PlexLoginService.postLinkPin], which returns a short
+ *    human-typeable code
+ * 2. Signals the UI to display that code so the user can enter it at https://plex.tv/link on any
+ *    other device
+ * 3. Polls Plex (via [IPlexLoginRepo.checkForOAuthAccessToken]) for the resulting auth token
+ * 4. Enforces a 5-minute timeout — long enough to read a code off a watch, walk to another
+ *    device, and type it in
  *
  * **State Machine Transitions:**
  * ```
  * Idle → CreatingPin → WaitingForUser → Polling → Success/Error/Timeout/Cancelled
  * ```
  *
+ * **Why this bypasses [IPlexLoginRepo.postOAuthPin]:** that method (kept verbatim, since it is
+ * still used by the wider account/server/user/library state machine) always requests a `strong`
+ * PIN via [PlexLoginService.postAuthPin], intended to be embedded in a browser-redirect URL. The
+ * plex.tv/link flow needs the plain, short code instead, so this coordinator calls
+ * [PlexLoginService.postLinkPin] directly and mirrors the one side effect [IPlexLoginRepo] callers
+ * rely on — stashing the new PIN's `id` in [PlexPrefsRepo.oAuthTempId] — so that the existing,
+ * unmodified [IPlexLoginRepo.checkForOAuthAccessToken] polls the right PIN.
+ *
  * **Threading:** All API calls and state updates happen on the provided [scope].
  *
  * **Lifecycle:**
- * - Create coordinator (typically in Fragment/ViewModel)
+ * - Create coordinator (typically in a ViewModel)
  * - Call [startAuth] to begin flow
  * - Observe [state] for UI updates
  * - Call [dispose] when done (cleanup)
  *
- * @param plexLoginRepo Repository for Plex API calls (PIN creation and token polling)
+ * @param plexLoginRepo Repository for the post-PIN account/server/user/library state machine and
+ *   for polling ([IPlexLoginRepo.checkForOAuthAccessToken])
+ * @param plexLoginService Used directly to create the plain, human-typeable PIN
+ * @param plexPrefsRepo Used directly to stash the new PIN's id, matching what
+ *   [IPlexLoginRepo.postOAuthPin] would have done for the strong-PIN flow
  * @param scope Coroutine scope for async operations (use viewModelScope for ViewModels)
  */
 class PlexAuthCoordinator
     @Inject
     constructor(
         private val plexLoginRepo: IPlexLoginRepo,
+        private val plexLoginService: PlexLoginService,
+        private val plexPrefsRepo: PlexPrefsRepo,
         private val scope: CoroutineScope,
     ) {
         companion object {
             /** Default polling interval in milliseconds */
             const val POLLING_INTERVAL_MS = 1500L
 
-            /** Expedited polling interval after browser return (milliseconds) */
-            const val EXPEDITED_POLLING_INTERVAL_MS = 200L
-
-            /** Authentication timeout (2 minutes in milliseconds) */
-            const val TIMEOUT_MS = 120_000L
+            /**
+             * Authentication timeout (5 minutes in milliseconds). Reading a short code off a
+             * watch face, walking to another device, and typing it in at plex.tv/link does not
+             * comfortably fit in the old 2-minute Chrome Custom Tabs timeout.
+             */
+            const val TIMEOUT_MS = 300_000L
         }
 
         private val _state = MutableStateFlow<PlexAuthState>(PlexAuthState.Idle)
@@ -68,21 +86,15 @@ class PlexAuthCoordinator
 
         private var pollingJob: Job? = null
         private var startTime: Long = 0
-        private var pollingInterval = POLLING_INTERVAL_MS
 
         /**
-         * Starts the OAuth authentication flow.
+         * Starts the plex.tv/link authentication flow.
          *
          * **State Transitions:**
          * 1. Idle → CreatingPin (while calling Plex API)
-         * 2. CreatingPin → WaitingForUser (PIN created, ready to launch browser)
+         * 2. CreatingPin → WaitingForUser (PIN created, short code ready to display)
          * 3. WaitingForUser → Polling (automatically starts polling)
          * 4. Polling → Success/Error/Timeout (based on polling results)
-         *
-         * **Error Handling:**
-         * - PIN creation failure → Error state
-         * - Network errors during polling → continues polling (transient failures)
-         * - Timeout after 2 minutes → Timeout state
          *
          * @return The StateFlow that emits auth state changes
          */
@@ -92,43 +104,28 @@ class PlexAuthCoordinator
                 return state
             }
 
-            // Register with singleton for deep link callbacks
-            AuthCoordinatorSingleton.register(this)
-
             _state.value = PlexAuthState.CreatingPin
 
             try {
-                // Create PIN via PlexLoginRepo
-                val oAuthResponse = plexLoginRepo.postOAuthPin()
-                if (oAuthResponse == null) {
-                    Timber.e("Failed to create authentication PIN - received null response")
-                    _state.value = PlexAuthState.Error("Failed to create authentication PIN")
-                    return state
-                }
+                val oAuthResponse = plexLoginService.postLinkPin()
 
                 Timber.i(
-                    "OAuth PIN created: id=${oAuthResponse.id}, code=${oAuthResponse.code}",
+                    "Link PIN created: id=${oAuthResponse.id}, code=${oAuthResponse.code}",
                 )
 
-                // Build OAuth URL using PlexAuthUrlBuilder
-                val authUrl =
-                    PlexAuthUrlBuilder.buildOAuthUrl(
-                        oAuthResponse.clientIdentifier,
-                        oAuthResponse.code,
-                    )
+                // Mirrors IPlexLoginRepo.postOAuthPin()'s side effect so the unmodified
+                // checkForOAuthAccessToken() polls this PIN.
+                plexPrefsRepo.oAuthTempId = oAuthResponse.id
 
-                // Transition to WaitingForUser - this signals the UI to launch browser
                 _state.value =
                     PlexAuthState.WaitingForUser(
                         pinId = oAuthResponse.id,
                         pinCode = oAuthResponse.code,
-                        authUrl = authUrl,
                     )
 
-                // Start polling automatically
                 startPolling(oAuthResponse.id)
             } catch (e: Exception) {
-                Timber.e(e, "Error creating auth PIN")
+                Timber.e(e, "Error creating link PIN")
                 _state.value =
                     PlexAuthState.Error(
                         "Failed to start authentication: ${e.message}",
@@ -142,85 +139,55 @@ class PlexAuthCoordinator
         /**
          * Starts polling the Plex API for authentication token.
          *
-         * Polls at [POLLING_INTERVAL_MS] intervals (1.5 seconds by default).
-         * Can be expedited to [EXPEDITED_POLLING_INTERVAL_MS] via [onBrowserReturned].
+         * Polls at [POLLING_INTERVAL_MS] intervals (1.5 seconds).
          *
          * **Termination Conditions:**
          * - Token received (Success state)
-         * - Timeout after [TIMEOUT_MS] (2 minutes)
+         * - Timeout after [TIMEOUT_MS] (5 minutes)
          * - Job cancelled via [cancelAuth] or [dispose]
          *
-         * @param pinId The PIN identifier to poll
+         * @param pinId The PIN identifier being polled
          */
         private fun startPolling(pinId: Long) {
             startTime = System.currentTimeMillis()
-            pollingInterval = POLLING_INTERVAL_MS
 
             pollingJob =
                 scope.launch {
-                    // Give UI time to observe WaitingForUser and launch Chrome Custom Tab
                     delay(POLLING_INTERVAL_MS)
 
                     while (isActive) {
                         val elapsed = System.currentTimeMillis() - startTime
 
-                        // Check timeout (2 minutes)
                         if (elapsed > TIMEOUT_MS) {
-                            Timber.w("OAuth authentication timed out after ${elapsed}ms")
+                            Timber.w("Link authentication timed out after ${elapsed}ms")
                             _state.value = PlexAuthState.Timeout
-                            AuthCoordinatorSingleton.unregister()
                             break
                         }
 
-                        // Update state with current elapsed time
                         _state.value = PlexAuthState.Polling(pinId, elapsed)
 
                         try {
-                            // Poll for token via PlexLoginRepo
                             plexLoginRepo.checkForOAuthAccessToken()
 
-                            // Check if login succeeded by inspecting login state
                             val loginState = plexLoginRepo.loginEvent.value?.peekContent()
                             if (loginState != null &&
                                 loginState != IPlexLoginRepo.LoginState.NOT_LOGGED_IN &&
                                 loginState != IPlexLoginRepo.LoginState.AWAITING_LOGIN_RESULTS &&
                                 loginState != IPlexLoginRepo.LoginState.FAILED_TO_LOG_IN
                             ) {
-                                Timber.i("OAuth token obtained successfully, login state: $loginState")
+                                Timber.i("Link auth token obtained successfully, login state: $loginState")
                                 _state.value = PlexAuthState.Success()
-                                AuthCoordinatorSingleton.unregister()
                                 break
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "Error during OAuth polling (continuing...)")
+                            Timber.e(e, "Error during link auth polling (continuing...)")
                             // Don't fail immediately - network errors might be transient
                             // Continue polling until timeout or success
                         }
 
-                        // Wait before next poll (uses current polling interval)
-                        delay(pollingInterval)
+                        delay(POLLING_INTERVAL_MS)
                     }
                 }
-        }
-
-        /**
-         * Called when the browser returns to the app via deep link.
-         *
-         * This is invoked by [AuthCoordinatorSingleton] when [AuthReturnActivity]
-         * receives the `https://auth.chronicleapp.net/callback` Android App Link
-         * (or `chronicle://auth/callback` as legacy fallback).
-         *
-         * **Behavior:**
-         * - Reduces polling interval to [EXPEDITED_POLLING_INTERVAL_MS] (200ms)
-         * - Triggers immediate polling check after brief delay
-         * - Improves perceived responsiveness of auth flow
-         *
-         * **Note:** This DOES NOT bypass polling - it merely expedites it.
-         * The polling mechanism remains the source of truth for authentication status.
-         */
-        fun onBrowserReturned() {
-            Timber.i("Browser returned, expediting polling to ${EXPEDITED_POLLING_INTERVAL_MS}ms")
-            pollingInterval = EXPEDITED_POLLING_INTERVAL_MS
         }
 
         /**
@@ -238,7 +205,6 @@ class PlexAuthCoordinator
             pollingJob?.cancel()
             pollingJob = null
             _state.value = PlexAuthState.Cancelled()
-            AuthCoordinatorSingleton.unregister()
         }
 
         /**
@@ -254,24 +220,21 @@ class PlexAuthCoordinator
             pollingJob?.cancel()
             pollingJob = null
             _state.value = PlexAuthState.Idle
-            AuthCoordinatorSingleton.unregister()
         }
 
         /**
          * Disposes of the coordinator and cleans up resources.
          *
-         * **Must be called** when the coordinator is no longer needed
-         * (e.g., in ViewModel.onCleared() or Fragment.onDestroy()).
+         * **Must be called** when the coordinator is no longer needed (e.g. in
+         * ViewModel.onCleared()).
          *
          * **Cleanup Actions:**
          * - Cancels polling job
-         * - Unregisters from singleton
          * - Does NOT reset state (preserves terminal state for observation)
          */
         fun dispose() {
             Timber.d("Disposing PlexAuthCoordinator")
             pollingJob?.cancel()
             pollingJob = null
-            AuthCoordinatorSingleton.unregister()
         }
     }

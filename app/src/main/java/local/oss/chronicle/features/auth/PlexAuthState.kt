@@ -1,10 +1,12 @@
 package local.oss.chronicle.features.auth
 
 /**
- * Immutable state representation for the Plex OAuth authentication flow.
+ * Immutable state representation for the Plex authentication flow.
  *
- * This sealed class represents all possible states during the Chrome Custom Tabs
- * OAuth flow, from initialization through completion (success or failure).
+ * This sealed class represents all possible states during the plex.tv/link short-code flow:
+ * a PIN is created on the watch, its short human-typeable code is shown on screen, the user
+ * enters that code at https://plex.tv/link on any other device, and the watch polls until the
+ * PIN resolves to an auth token (or times out / errors / is cancelled).
  */
 sealed class PlexAuthState {
     /**
@@ -18,17 +20,16 @@ sealed class PlexAuthState {
     object CreatingPin : PlexAuthState()
 
     /**
-     * State after PIN is created and browser is ready to be launched.
-     * Waiting for user to complete authentication in the browser.
+     * State after PIN is created. Waiting for the user to enter [pinCode] at plex.tv/link on
+     * another device. The screen showing this state MUST stay on for the duration (no
+     * screen-off/ambient) so the user can read the code.
      *
      * @property pinId The PIN identifier for polling
-     * @property pinCode The PIN code displayed to the user (unused in CCT flow)
-     * @property authUrl The OAuth URL to open in Chrome Custom Tabs
+     * @property pinCode The short human-typeable code to display, to be entered at plex.tv/link
      */
     data class WaitingForUser(
         val pinId: Long,
         val pinCode: String,
-        val authUrl: String,
     ) : PlexAuthState()
 
     /**
@@ -63,7 +64,7 @@ sealed class PlexAuthState {
     ) : PlexAuthState()
 
     /**
-     * Terminal state: Authentication timed out (2 minutes).
+     * Terminal state: Authentication timed out (5 minutes).
      */
     object Timeout : PlexAuthState()
 

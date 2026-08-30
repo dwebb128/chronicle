@@ -24,6 +24,7 @@ import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
 import local.oss.chronicle.features.download.DownloadNotificationWorker
 import local.oss.chronicle.features.download.FetchGroupStartFinishListener
 import local.oss.chronicle.util.ScopedCoroutineManager
+import local.oss.chronicle.util.bytesAvailable
 import timber.log.Timber
 import java.io.File
 import java.io.FileFilter
@@ -127,6 +128,9 @@ class CachedFileManager
                     Timber.e("Failed to download book $bookId: ${error.message}")
                 },
             ) {
+                if (!hasEnoughSpaceForBook(bookId)) {
+                    return@launchSafe
+                }
                 fetch.enqueue(makeRequests(bookId, bookTitle)) {
                     val errors =
                         it.mapNotNull { (_, error) ->
@@ -144,6 +148,40 @@ class CachedFileManager
                     }
                 }
             }
+        }
+
+        /**
+         * Storage safety net (PLAN.md section 8): refuses to start a download when the book's
+         * not-yet-cached tracks would need more space than is free on [PrefsRepo.cachedMediaDir].
+         * Errs conservative — sums every not-yet-cached track's [MediaItemTrack.size] rather than
+         * re-deriving [makeRequests]'s exact per-file skip logic (already-downloaded-but-partial
+         * files are treated as still needing their full size again).
+         *
+         * On refusal, shows the user a Toast and returns `false` so the caller can skip enqueuing
+         * without touching the Fetch integration itself.
+         */
+        private suspend fun hasEnoughSpaceForBook(bookId: String): Boolean {
+            val neededBytes =
+                trackRepository.getTracksForAudiobookAsync(bookId)
+                    .filterNot { it.cached }
+                    .sumOf { it.size }
+            if (neededBytes <= 0L) {
+                return true
+            }
+            val availableBytes = prefsRepo.cachedMediaDir.bytesAvailable()
+            if (availableBytes < neededBytes) {
+                Timber.e(
+                    "Refusing to download book $bookId: needs ${neededBytes}B, only " +
+                        "${availableBytes}B free on ${prefsRepo.cachedMediaDir}",
+                )
+                Toast.makeText(
+                    applicationContext,
+                    "Not enough storage space to download this audiobook",
+                    LENGTH_SHORT,
+                ).show()
+                return false
+            }
+            return true
         }
 
         /**

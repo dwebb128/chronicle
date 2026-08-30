@@ -13,6 +13,15 @@ interface PlexLoginService {
     @POST("https://plex.tv/api/v2/pins.json?strong=true")
     suspend fun postAuthPin(): OAuthResponse
 
+    /**
+     * Creates a "plain" (non-`strong`) PIN. Unlike [postAuthPin], the code returned here is short
+     * and human-typeable — it is the code a user reads off the watch and enters at plex.tv/link,
+     * rather than one embedded in a browser-redirect URL. Polling for the resulting auth token
+     * still uses the same [getAuthPin] endpoint, keyed by this PIN's `id`.
+     */
+    @POST("https://plex.tv/api/v2/pins.json")
+    suspend fun postLinkPin(): OAuthResponse
+
     @GET("https://plex.tv/api/v2/pins/{id}.json")
     suspend fun getAuthPin(
         @Path("id") id: Long,
