@@ -41,6 +41,7 @@ import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.Nav
 import local.oss.chronicle.ui.components.ChapterRow
 import local.oss.chronicle.ui.components.LoadingScreen
+import local.oss.chronicle.ui.components.NowPlayingChip
 import local.oss.chronicle.ui.components.OptionsDialog
 import local.oss.chronicle.ui.rotaryScrollable
 
@@ -97,6 +98,9 @@ fun BookDetailsScreen(
             state = listState,
             modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
         ) {
+            item {
+                NowPlayingChip(navController = navController)
+            }
             item {
                 AsyncImage(
                     model = thumbUri,

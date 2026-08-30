@@ -342,10 +342,6 @@ class AudiobookDetailsViewModel(
     }
 
     fun onCacheButtonClick() {
-        if (!prefsRepo.isPremium) {
-            showUserMessage(FormattableString.from(R.string.premium_required_offline_playback))
-            return
-        }
         when (cacheStatus.value) {
             NOT_CACHED -> {
                 Timber.i("Caching tracks for \"${audiobook.value?.title}\"")

@@ -18,7 +18,6 @@
     <string name="marked_as_played">Marked audiobook as played.</string>
     <string name="marked_as_unplayed">Marked audiobook as unplayed.</string>
     <string name="cannot_play_media_no_server">Cannot play media- not connected to any server!</string>
-    <string name="premium_required_offline_playback">Premium is required for offline playback!</string>
     <string name="unable_to_cache_audiobook">Unable to download audiobook- not connected to server</string>
     <string name="prompt_force_sync">Force sync with network? Local progress will be lost</string>
     <string name="progress_sync_successful">Sync successful!</string>
@@ -79,9 +78,10 @@
     <string name="sleep_timer_duration_end_of_chapter">End of chapter</string>
     <string name="sleep_timer_append">+5 minutes</string>
     <string name="cancel">Cancel</string>
-    <string name="sleep_timer_extended_message">Chronicle: Sleep timer extended</string>
 
     <!-- Settings -->
+    <string name="no_bluetooth_output_warning">Playing on watch speaker — connect Bluetooth headphones</string>
+    <string name="settings">Settings</string>
     <string name="settings_delete_synced_title">Delete synced files</string>
     <string name="settings_delete_synced_confirm">Delete all downloaded files?</string>
     <string name="settings_delete_synced_response">Deleted %1$s cached files</string>

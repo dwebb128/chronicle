@@ -7,13 +7,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
+import local.oss.chronicle.R
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.features.library.LibraryViewModel
 import local.oss.chronicle.ui.Nav
@@ -71,6 +75,16 @@ fun LibraryScreen(navController: NavHostController) {
                         onClick = { navController.navigate(Nav.bookDetails(book.id)) },
                     )
                 }
+            }
+            // The only entry point to Settings. The phone reached it from the bottom nav bar,
+            // which has no Wear equivalent, so it lives at the end of the library list instead.
+            item {
+                Chip(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = stringResource(R.string.settings)) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    onClick = { navController.navigate(Nav.SETTINGS) },
+                )
             }
         }
         PositionIndicator(scalingLazyListState = listState)

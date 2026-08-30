@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -23,14 +24,18 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.CompactChip
+import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
+import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
 import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingViewModel
 import local.oss.chronicle.ui.LocalActivityComponent
@@ -65,6 +70,7 @@ fun NowPlayingScreen(navController: NavHostController) {
     val jumpForwardsIcon by viewModel.jumpForwardsIcon.observeAsState(R.drawable.ic_forward_30_white)
     val jumpBackwardsIcon by viewModel.jumpBackwardsIcon.observeAsState(R.drawable.ic_replay_10_white)
     val bottomChooserState by viewModel.bottomChooserState.observeAsState()
+    val hasBluetoothAudio by Injector.get().audioOutputMonitor().hasBluetoothAudio.collectAsState()
 
     val currentBook = book
     if (currentBook == null || currentBook.id == NO_AUDIOBOOK_FOUND_ID) {
@@ -103,6 +109,18 @@ fun NowPlayingScreen(navController: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // Non-blocking: playback through the watch speaker still works, but on a wrist
+            // that is rarely what the listener wants, so say so rather than silently doing it.
+            if (!hasBluetoothAudio) {
+                Text(
+                    text = stringResource(R.string.no_bluetooth_output_warning),
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.error,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(text = currentBook.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 text = activeChapter?.title.orEmpty(),

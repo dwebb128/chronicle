@@ -95,25 +95,6 @@ The screen keeps the display on (`LocalView.current.keepScreenOn`) for as long a
 non-terminal, since the code has to stay legible long enough to type into another device — Wear OS
 would otherwise blank the screen aggressively.
 
-## Known integration issue: a method-name mismatch
-
-While documenting this flow, a real (not merely stylistic) discrepancy was found between two files
-built in different waves of this conversion:
-
-- [`LoginViewModel`](../../app/src/main/java/local/oss/chronicle/features/login/LoginViewModel.kt)
-  exposes `startLinkAccountAuth()`, `cancelAuth()`, `resetAuth()`, and `authState`.
-- [`LinkAccountScreen`](../../app/src/main/java/local/oss/chronicle/ui/screens/LinkAccountScreen.kt)
-  calls `viewModel.startChromeCustomTabsAuth()` — a method that does not exist on `LoginViewModel`
-  as written.
-
-This is a real cross-file naming mismatch, most likely because the UI screen was written against
-an earlier/assumed method name for what became `startLinkAccountAuth()`. Since nothing in this
-repository can currently be compiled, this was not caught by a build. **This needs a one-line fix
-in `LinkAccountScreen.kt`** (rename the call to `startLinkAccountAuth()`) before this flow can
-compile, let alone run. It is called out here rather than fixed directly because
-`ui/screens/**` is outside this documentation pass's file ownership — see the wave report for
-details.
-
 ## Recommended follow-up: QR code login
 
 A QR code (shown on the watch, scanned by a phone's camera to complete the link) would be

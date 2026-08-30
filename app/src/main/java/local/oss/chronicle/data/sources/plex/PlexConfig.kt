@@ -21,7 +21,6 @@ import local.oss.chronicle.util.NetworkMonitor
 import local.oss.chronicle.util.NetworkState
 import local.oss.chronicle.util.RetryConfig
 import local.oss.chronicle.util.RetryResult
-import local.oss.chronicle.util.getImage
 import local.oss.chronicle.util.toUri
 import local.oss.chronicle.util.withRetry
 import okhttp3.OkHttpClient
@@ -167,7 +166,7 @@ class PlexConfig
                 return null
             }
 
-            // Retrieve cached album art from Glide if available
+            // Retrieve cached album art from the Coil image cache if available
             val appContext = Injector.get().applicationContext()
             val imageSize = appContext.resources.getDimension(R.dimen.audiobook_image_width).toInt()
             val uri =

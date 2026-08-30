@@ -9,9 +9,9 @@ import android.os.Looper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import local.oss.chronicle.injection.scopes.ServiceScope
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Hand-rolled (no Horologist) monitor for whether a Bluetooth-family audio output device is
@@ -27,7 +27,7 @@ import javax.inject.Inject
  * `TYPE_BLE_HEADSET`, `TYPE_BLE_SPEAKER`, `TYPE_HEARING_AID`) were added at API 33 or earlier,
  * so they are safe unconditionally at this app's minSdk 34.
  */
-@ServiceScope
+@Singleton
 class AudioOutputMonitor
     @Inject
     constructor(

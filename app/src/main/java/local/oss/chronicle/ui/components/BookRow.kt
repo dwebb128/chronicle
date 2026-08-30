@@ -1,5 +1,6 @@
 package local.oss.chronicle.ui.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -32,7 +33,9 @@ fun BookRow(
     val thumbUri = remember(book.thumb) { plexConfig.makeThumbUri(book.thumb).toString() }
     Chip(
         onClick = onClick,
-        modifier = modifier,
+        // Default to full width so library rows line up with every other Chip list in the
+        // app; Wear Compose Chips do not fill width on their own.
+        modifier = modifier.fillMaxWidth(),
         label = {
             Text(text = book.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },

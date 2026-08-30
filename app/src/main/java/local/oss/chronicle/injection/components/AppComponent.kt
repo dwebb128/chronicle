@@ -23,6 +23,8 @@ import javax.inject.Singleton
 interface AppComponent {
     fun applicationContext(): Context
 
+    fun audioOutputMonitor(): AudioOutputMonitor
+
     fun internalFilesDir(): File
 
     fun externalDeviceDirs(): List<File>

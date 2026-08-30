@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,9 @@ import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.components.ErrorScreen
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.rotaryScrollable
+
+/** Wear's minimum comfortable touch target; CompactChip is shorter than this by default. */
+private val KEYPAD_KEY_MIN_TOUCH_TARGET = 48.dp
 
 /**
  * Second screen in the real [local.oss.chronicle.data.sources.plex.IPlexLoginRepo.LoginState]
@@ -118,7 +122,7 @@ private fun PinEntryScreen(viewModel: ChooseUserViewModel) {
                         CompactChip(
                             onClick = { appendDigit(digit.toString()) },
                             label = { Text(digit.toString()) },
-                            modifier = Modifier.padding(2.dp),
+                            modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
                         )
                     }
                 }
@@ -129,7 +133,7 @@ private fun PinEntryScreen(viewModel: ChooseUserViewModel) {
                         CompactChip(
                             onClick = { appendDigit(digit.toString()) },
                             label = { Text(digit.toString()) },
-                            modifier = Modifier.padding(2.dp),
+                            modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
                         )
                     }
                 }
@@ -140,19 +144,27 @@ private fun PinEntryScreen(viewModel: ChooseUserViewModel) {
                         CompactChip(
                             onClick = { appendDigit(digit.toString()) },
                             label = { Text(digit.toString()) },
-                            modifier = Modifier.padding(2.dp),
+                            modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
                         )
                     }
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    CompactChip(onClick = ::backspace, label = { Text("Del") }, modifier = Modifier.padding(2.dp))
-                    CompactChip(onClick = { appendDigit("0") }, label = { Text("0") }, modifier = Modifier.padding(2.dp))
+                    CompactChip(
+                        onClick = ::backspace,
+                        label = { Text("Del") },
+                        modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
+                    )
+                    CompactChip(
+                        onClick = { appendDigit("0") },
+                        label = { Text("0") },
+                        modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
+                    )
                     CompactChip(
                         onClick = { viewModel.submitPin() },
                         label = { Text(stringResource(R.string.submit)) },
-                        modifier = Modifier.padding(2.dp),
+                        modifier = Modifier.weight(1f).padding(2.dp).height(KEYPAD_KEY_MIN_TOUCH_TARGET),
                     )
                 }
             }
@@ -160,7 +172,7 @@ private fun PinEntryScreen(viewModel: ChooseUserViewModel) {
                 CompactChip(
                     onClick = { viewModel.hidePinScreen() },
                     label = { Text(stringResource(R.string.cancel)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(KEYPAD_KEY_MIN_TOUCH_TARGET),
                 )
             }
         }

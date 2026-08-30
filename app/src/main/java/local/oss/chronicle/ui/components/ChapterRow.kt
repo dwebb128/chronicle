@@ -1,5 +1,6 @@
 package local.oss.chronicle.ui.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,7 +23,7 @@ fun ChapterRow(
 ) {
     Chip(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         colors = if (isActive) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
         label = {
             Text(

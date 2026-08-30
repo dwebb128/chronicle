@@ -3,22 +3,25 @@ package local.oss.chronicle.ui.components
 import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
+import local.oss.chronicle.ui.rotaryScrollable
 
 /**
  * Moved here from the deleted `views/BottomSheetChooser.kt` (PLAN.md 5.6): these types are the
@@ -120,23 +123,29 @@ data class BottomChooserState(
 fun OptionsDialog(state: BottomChooserState) {
     if (!state.shouldShow) return
     val resources = LocalContext.current.resources
+    val listState = rememberScalingLazyListState()
     Dialog(onDismissRequest = { state.listener.onChooserClosed(true) }) {
-        Column(
+        // Must scroll: the refresh-rate chooser passes nine options, and a round 45mm display
+        // cannot show that many rows at once. A plain Column would leave the last options
+        // rendered off-screen and physically untappable.
+        ScalingLazyColumn(
+            state = listState,
             modifier =
                 Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .background(MaterialTheme.colors.surface)
-                    .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .rotaryScrollable(listState),
         ) {
-            Text(
-                text = resources.getString(state.title),
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-            state.options.forEach { option ->
+            item {
+                Text(
+                    text = resources.getString(state.title),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+            items(state.options) { option ->
                 Chip(
                     onClick = { state.listener.onItemClicked(option) },
                     colors = ChipDefaults.secondaryChipColors(),
