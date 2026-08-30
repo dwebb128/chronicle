@@ -27,6 +27,7 @@ jobs:
       
       - name: Copy Play Store graphics to Pages assets
         run: |
+          # TODO(wear-conversion): replace with Wear OS screenshots once captured
           mkdir -p pages/assets/images/
           cp app/src/main/play/listings/en-US/graphics/feature-graphic/feature-graphic.png pages/assets/images/feature-graphic.png
           cp app/src/main/play/listings/en-US/graphics/phone-screenshots/1-home.png pages/assets/images/home.png

@@ -1,4 +1,4 @@
-Stream or download audiobooks hosted on your Plex server with Chronicle, the best Android Audiobook Player for Plex.
+Stream or download audiobooks hosted on your Plex server with Chronicle, the loved Audiobook Player for Plex — now built for Wear OS, so your books go wherever your watch does.
 
 <b>📚 Key Features</b>
 
@@ -8,22 +8,21 @@ Stream or download audiobooks hosted on your Plex server with Chronicle, the bes
 • <b>Auto-Rewind</b> - Never lose your place with automatic rewind on resume
 • <b>Sleep Timer</b> - Fall asleep to your favorite books with built-in sleep timer
 • <b>Skip Silence</b> - Automatically skip silent portions for efficient listening
-• <b>Download Books</b> - Download audiobooks for offline playback anytime, anywhere
+• <b>Download Books</b> - Download audiobooks to your watch for offline playback anytime, anywhere
 
-<b>📖 Perfect for Plex Users</b>
+<b>⌚ Built for the Wrist</b>
 
-Chronicle is designed specifically for Plex users who want a dedicated audiobook player with features tailored for long-form content. Connect to your Plex server and enjoy your entire audiobook collection with an interface optimized for audiobooks.
+Chronicle is designed specifically for Plex users who want a dedicated audiobook player on their wrist, with a Wear OS interface built for quick glances and rotary-crown navigation. Connect to your Plex server and enjoy your entire audiobook collection without needing your phone in hand.
 
 <b>🎯 Requirements</b>
 
 • A Plex server with audiobook content
-• Android 13 or higher
+• A Wear OS watch
 • Network access to your Plex server
-• For Android Auto: you must be logged into the app before you are able to use it in your vehicle
 
 <b>🔗 Useful Resources</b>
 
 • Plex Audiobook Guide: https://github.com/seanap/Plex-Audiobook-Guide
 • Chronicle Community: https://www.reddit.com/r/ChronicleEpilogueApp/
 
-Chronicle is open source and continuously improving. Experience the best way to enjoy your Plex audiobooks on Android!
+Chronicle is open source and continuously improving. Experience the best way to enjoy your Plex audiobooks on your Wear OS watch!
