@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,19 +35,15 @@ import local.oss.chronicle.ui.components.LoadingScreen
  * code the user enters at plex.tv/link on any other device with a browser, since a watch has no
  * Custom Tabs / browser of its own.
  *
- * Built against the *current* [LoginViewModel]/[PlexAuthCoordinator]/[PlexAuthState] API — Wave 2c
- * owns rewiring [PlexAuthCoordinator] onto the plain `pins.json` endpoint and dropping
- * [PlexAuthState.WaitingForUser.authUrl] (this screen never reads `authUrl`, only `pinCode`, so it
- * does not depend on that field surviving). Renders every terminal state explicitly with a visible
- * "Try again" (PLAN.md 7 — a review finding against an earlier, happy-path-only draft) and keeps
- * the screen on for the whole non-terminal flow so the user has time to type the code elsewhere.
+ * Renders every terminal state explicitly with a visible "Try again", and keeps the screen on for
+ * the whole non-terminal flow so the user has time to type the code on another device.
  */
 @Composable
 fun LinkAccountScreen(navController: NavHostController) {
     val activityComponent = LocalActivityComponent.current
     val viewModel: LoginViewModel = viewModel(factory = activityComponent.loginViewModelFactory())
 
-    var authState by remember { mutableStateOf<PlexAuthState>(PlexAuthState.Idle) }
+    val authState by viewModel.authState.collectAsState()
     var lastCode by remember { mutableStateOf<String?>(null) }
     var retryKey by remember { mutableStateOf(0) }
 
@@ -56,13 +53,14 @@ fun LinkAccountScreen(navController: NavHostController) {
         onDispose { view.keepScreenOn = false }
     }
 
+    // Hold on to the last code we saw: the coordinator moves from WaitingForUser to Polling
+    // while the user is still typing it in elsewhere, and the code must stay on screen.
+    LaunchedEffect(authState) {
+        (authState as? PlexAuthState.WaitingForUser)?.let { lastCode = it.pinCode }
+    }
+
     LaunchedEffect(retryKey) {
-        viewModel.startChromeCustomTabsAuth().collect { state ->
-            authState = state
-            if (state is PlexAuthState.WaitingForUser) {
-                lastCode = state.pinCode
-            }
-        }
+        viewModel.startLinkAccountAuth()
     }
 
     fun retry() {

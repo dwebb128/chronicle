@@ -3,7 +3,6 @@ package local.oss.chronicle.injection.modules
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
-import android.hardware.SensorManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.support.v4.media.RatingCompat.RATING_NONE
@@ -193,13 +192,6 @@ class ServiceModule(private val service: MediaPlayerService) {
     @Provides
     @ServiceScope
     fun trackListManager(): TrackListStateManager = TrackListStateManager()
-
-    @Provides
-    @ServiceScope
-    fun sensorManager(): SensorManager =
-        service.getSystemService(
-            Context.SENSOR_SERVICE,
-        ) as SensorManager
 
     @Provides
     @ServiceScope
