@@ -8,7 +8,7 @@ import org.junit.Test
  * These tests verify that slider safety computations prevent IllegalStateException
  * when Material Slider's validateValues() is called.
  */
-class CurrentlyPlayingBindingAdaptersTest {
+class SliderSafetyHelperTest {
 
     @Test
     fun `computeSafeValueTo returns minimum safe value when valueTo is zero`() {
