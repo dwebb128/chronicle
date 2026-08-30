@@ -14,7 +14,6 @@ import local.oss.chronicle.data.sources.plex.PlexMediaSource
 import local.oss.chronicle.features.player.*
 import local.oss.chronicle.injection.modules.ServiceModule
 import local.oss.chronicle.injection.scopes.ServiceScope
-import local.oss.chronicle.util.PackageValidator
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 @ServiceScope
@@ -47,8 +46,6 @@ interface ServiceComponent {
     fun serviceController(): ServiceController
 
     fun plexDataSourceFactory(): HttpDataSource.Factory
-
-    fun packageValidator(): PackageValidator
 
     fun foregroundServiceController(): ForegroundServiceController
 

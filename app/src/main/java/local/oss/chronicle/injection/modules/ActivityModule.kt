@@ -1,40 +1,29 @@
 package local.oss.chronicle.injection.modules
 
 import android.content.ComponentName
-import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.FragmentManager
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import dagger.Module
 import dagger.Provides
 import kotlinx.coroutines.CoroutineScope
-import local.oss.chronicle.data.local.BookRepository
-import local.oss.chronicle.data.local.LibraryRepository
-import local.oss.chronicle.features.account.AccountListViewModel
-import local.oss.chronicle.features.account.AccountManager
-import local.oss.chronicle.features.account.ActiveLibraryProvider
 import local.oss.chronicle.features.player.MediaPlayerService
 import local.oss.chronicle.features.player.MediaServiceConnection
 import local.oss.chronicle.features.player.ProgressUpdater
 import local.oss.chronicle.features.player.SimpleProgressUpdater
 import local.oss.chronicle.injection.scopes.ActivityScope
-import local.oss.chronicle.navigation.Navigator
 import local.oss.chronicle.util.ServiceUtils
 import timber.log.Timber
 
 @Module
-class ActivityModule(private val activity: AppCompatActivity) {
+class ActivityModule(private val activity: ComponentActivity) {
     @Provides
     @ActivityScope
-    fun activity(): AppCompatActivity = activity
+    fun activity(): ComponentActivity = activity
 
     @Provides
     @ActivityScope
     fun coroutineScope(): CoroutineScope = activity.lifecycleScope
-
-    @Provides
-    @ActivityScope
-    fun fragmentManager(): FragmentManager = activity.supportFragmentManager
 
     @Provides
     @ActivityScope
@@ -65,17 +54,5 @@ class ActivityModule(private val activity: AppCompatActivity) {
             conn.connect()
         }
         return conn
-    }
-
-    @Provides
-    @ActivityScope
-    fun provideAccountListViewModelFactory(
-        accountManager: AccountManager,
-        activeLibraryProvider: ActiveLibraryProvider,
-        navigator: Navigator,
-        bookRepository: BookRepository,
-        libraryRepository: LibraryRepository,
-    ): AccountListViewModel.Factory {
-        return AccountListViewModel.Factory(accountManager, activeLibraryProvider, navigator, bookRepository, libraryRepository)
     }
 }

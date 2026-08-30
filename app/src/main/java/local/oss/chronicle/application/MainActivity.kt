@@ -1,23 +1,18 @@
 package local.oss.chronicle.application
 
-import android.annotation.SuppressLint
 import android.app.SearchManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.view.GestureDetector
-import android.view.MotionEvent
-import android.view.View
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updatePadding
-import androidx.databinding.DataBindingUtil
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -25,18 +20,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import local.oss.chronicle.R
-import local.oss.chronicle.application.MainActivityViewModel.BottomSheetState.COLLAPSED
-import local.oss.chronicle.application.MainActivityViewModel.BottomSheetState.EXPANDED
 import local.oss.chronicle.data.local.IBookRepository
-import local.oss.chronicle.data.local.ITrackRepository
 import local.oss.chronicle.data.model.EMPTY_AUDIOBOOK
 import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
 import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
-import local.oss.chronicle.data.sources.plex.IPlexLoginRepo.LoginState.LOGGED_IN_FULLY
-import local.oss.chronicle.data.sources.plex.PlexConfig
-import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
-import local.oss.chronicle.databinding.ActivityMainBinding
-import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingFragment
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.ACTION_PLAYBACK_ERROR
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.PLAYBACK_ERROR_MESSAGE
 import local.oss.chronicle.features.player.MediaServiceConnection
@@ -44,13 +31,22 @@ import local.oss.chronicle.injection.components.ActivityComponent
 import local.oss.chronicle.injection.components.DaggerActivityComponent
 import local.oss.chronicle.injection.modules.ActivityModule
 import local.oss.chronicle.injection.scopes.ActivityScope
-import local.oss.chronicle.navigation.Navigator
+import local.oss.chronicle.ui.ChronicleWearApp
+import local.oss.chronicle.ui.LocalActivityComponent
+import local.oss.chronicle.ui.Nav
 import local.oss.chronicle.util.observeEvent
 import timber.log.Timber
 import javax.inject.Inject
 
+/**
+ * Thin Wear OS host Activity. Builds the [ActivityComponent] exactly as the phone app did, injects
+ * itself, then hands the whole UI over to Compose ([ChronicleWearApp]). All the phone-era
+ * bottom-nav / draggable mini-player / [android.view.GestureDetector] /
+ * [androidx.activity.OnBackPressedCallback] logic is gone — [androidx.wear.compose.navigation]'s
+ * `SwipeDismissableNavHost` handles back gestures natively.
+ */
 @ActivityScope
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
     @Inject
     lateinit var localBroadcastManager: LocalBroadcastManager
 
@@ -58,31 +54,33 @@ class MainActivity : AppCompatActivity() {
     lateinit var mainActivityViewModelFactory: MainActivityViewModel.Factory
 
     private val viewModel: MainActivityViewModel by lazy {
-        ViewModelProvider(this, mainActivityViewModelFactory).get(MainActivityViewModel::class.java)
+        ViewModelProvider(this, mainActivityViewModelFactory)[MainActivityViewModel::class.java]
     }
 
     @Inject
     lateinit var plexLoginRepo: IPlexLoginRepo
 
     @Inject
-    lateinit var navigator: Navigator
-
-    @Inject
-    lateinit var plexPrefsRepo: PlexPrefsRepo
-
-    @Inject
     lateinit var bookRepository: IBookRepository
-
-    @Inject
-    lateinit var trackRepository: ITrackRepository
-
-    @Inject
-    lateinit var plexConfig: PlexConfig
 
     @Inject
     lateinit var mediaServiceConnection: MediaServiceConnection
 
     var activityComponent: ActivityComponent? = null
+
+    /**
+     * A route [ChronicleWearApp] should navigate to once its NavHost exists, resolved from a
+     * notification tap or a "play audiobook X" launch intent (see [handleNotificationIntent]).
+     * Backed by Compose state so recomposition picks it up without any manual observer wiring;
+     * [ChronicleWearApp] is expected to `LaunchedEffect(pendingRoute)`-navigate and then call
+     * [consumePendingRoute].
+     */
+    var pendingRoute by mutableStateOf<String?>(null)
+        private set
+
+    fun consumePendingRoute() {
+        pendingRoute = null
+    }
 
     override fun onDestroy() {
         activityComponent = null
@@ -100,87 +98,16 @@ class MainActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
 
-        // Enable edge-to-edge display for MD3
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        localBroadcastManager = LocalBroadcastManager.getInstance(this)
-
-        val binding =
-            DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main)
-        binding.lifecycleOwner = this
-        binding.viewModel = viewModel
-        binding.plexConfig = plexConfig
-
-        // Apply window insets to bottom navigation for edge-to-edge
-        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNav) { view, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(bottom = insets.bottom)
-            WindowInsetsCompat.CONSUMED
-        }
-
-        binding.currentlyPlayingHandle.setOnClickListener {
-            viewModel.onCurrentlyPlayingClicked()
-        }
-
         viewModel.errorMessage.observeEvent(this) { errorMessage ->
             Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
         }
 
-        // TODO: show/hide this item on launch more performantly
-        viewModel.hasCollections.observe(this) {
-            binding.bottomNav.menu.findItem(R.id.nav_collections).isVisible = it
-        }
-
-        binding.bottomNav.setOnItemSelectedListener {
-            when (it.itemId) {
-                R.id.nav_settings -> navigator.showSettings()
-                R.id.nav_library -> navigator.showLibrary()
-                R.id.nav_collections -> navigator.showCollections()
-                R.id.nav_home -> navigator.showHome()
-                else -> throw NoWhenBranchMatchedException("Unknown bottom tab id: ${it.itemId}")
-            }
-            viewModel.minimizeCurrentlyPlaying()
-            return@setOnItemSelectedListener true
-        }
-
         if (savedInstanceState == null) {
-            setupCurrentlyPlaying()
-            // Re-post a fresh login state event for this new activity instance
+            // Re-post a fresh login state event for this new activity instance. ChronicleWearApp
+            // (Wave 2a/2c) observes IPlexLoginRepo.loginEvent to route between the
+            // login/choose-user/choose-server/choose-library/library screens — see PLAN.md 5.3.
             plexLoginRepo.determineLoginState()
-            plexLoginRepo.loginEvent.value?.let {
-                if (it.peekContent() == LOGGED_IN_FULLY) {
-                    navigator.showHome()
-                }
-            }
         }
-
-        // Handle back button press with modern OnBackPressedCallback
-        onBackPressedDispatcher.addCallback(
-            this,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    // If currently playing view is over fragments, close it via back button
-                    if (viewModel.currentlyPlayingLayoutState.value == EXPANDED) {
-                        viewModel.setBottomSheetState(COLLAPSED)
-                        return
-                    }
-                    // default to activity back stack if navigator did not handle anything
-                    if (!navigator.onBackPressed()) {
-                        Timber.i("MainActivity handleOnBackPressed()")
-                        if (supportFragmentManager.backStackEntryCount == 0) {
-                            // The prevent Q+ from leaking the activity internally, don't call
-                            // super.onBackPressed() if at base fragment, manually end...
-                            finishAfterTransition()
-                        } else {
-                            // Let the system handle the back press
-                            isEnabled = false
-                            onBackPressedDispatcher.onBackPressed()
-                            isEnabled = true
-                        }
-                    }
-                }
-            },
-        )
 
         // If the app is being launched by voice assistant with a query
         val query = intent.getStringExtra(SearchManager.QUERY)
@@ -191,37 +118,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         handleNotificationIntent(intent)
-    }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupCurrentlyPlaying() {
-        val transaction = supportFragmentManager.beginTransaction()
-        transaction.replace(
-            R.id.currently_playing_fragment_container,
-            CurrentlyPlayingFragment.newInstance(),
-        )
-        transaction.commit()
-        val handle = findViewById<View>(R.id.currently_playing_handle)
-        val gd =
-            GestureDetector(
-                this,
-                object : GestureDetector.SimpleOnGestureListener() {
-                    override fun onScroll(
-                        e1: MotionEvent?,
-                        e2: MotionEvent,
-                        distanceX: Float,
-                        distanceY: Float,
-                    ): Boolean {
-                        if (distanceY > distanceX) {
-                            viewModel.onCurrentlyPlayingHandleDragged()
-                        }
-                        return super.onScroll(e1, e2, distanceX, distanceY)
-                    }
-                },
-            )
-        handle.setOnTouchListener { v, event ->
-            gd.onTouchEvent(event)
-            v.onTouchEvent(event)
+        setContent {
+            CompositionLocalProvider(LocalActivityComponent provides activityComponent!!) {
+                ChronicleWearApp(
+                    pendingRoute = pendingRoute,
+                    onPendingRouteConsumed = ::consumePendingRoute,
+                )
+            }
         }
     }
 
@@ -245,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleNotificationIntent(intent)
     }
@@ -256,7 +160,7 @@ class MainActivity : AppCompatActivity() {
                 FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING, false,
             ) == true
         if (openCurrentlyPlaying) {
-            viewModel.maximizeCurrentlyPlaying()
+            pendingRoute = Nav.NOW_PLAYING
         }
 
         val openAudiobookWithId =
@@ -268,7 +172,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.IO) {
                     val audiobook = bookRepository.getAudiobookAsync(openAudiobookWithId)
                     if (audiobook != null && audiobook != EMPTY_AUDIOBOOK) {
-                        navigator.showDetails(audiobook.id, audiobook.title, audiobook.isCached)
+                        pendingRoute = Nav.bookDetails(audiobook.id)
                     }
                 }
             }

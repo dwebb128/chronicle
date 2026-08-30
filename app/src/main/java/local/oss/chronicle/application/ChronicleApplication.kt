@@ -9,9 +9,7 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.StrictMode
 import android.os.StrictMode.VmPolicy
-import com.bumptech.glide.Glide
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.core.ImagePipelineConfig
+import coil.ImageLoader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import local.oss.chronicle.BuildConfig
@@ -57,9 +55,6 @@ open class ChronicleApplication : Application() {
     lateinit var prefsRepo: PrefsRepo
 
     @Inject
-    lateinit var billingManager: ChronicleBillingManager
-
-    @Inject
     lateinit var unhandledExceptionHandler: CoroutineExceptionHandler
 
     @Inject
@@ -69,7 +64,7 @@ open class ChronicleApplication : Application() {
     lateinit var plexLoginService: PlexLoginService
 
     @Inject
-    lateinit var frescoConfig: ImagePipelineConfig
+    lateinit var imageLoader: ImageLoader
 
     @Inject
     lateinit var legacyAccountMigration: LegacyAccountMigration
@@ -117,13 +112,6 @@ open class ChronicleApplication : Application() {
         updateDownloadedFileState()
         runLegacyAccountMigration()
         super.onCreate()
-        Fresco.initialize(this, frescoConfig)
-        // TODO: remove in a future version
-        applicationScope.launch {
-            withContext(Dispatchers.IO) {
-                Glide.get(Injector.get().applicationContext()).clearDiskCache()
-            }
-        }
     }
 
     /**
@@ -345,12 +333,12 @@ open class ChronicleApplication : Application() {
     }
 
     override fun onTrimMemory(level: Int) {
-        Fresco.getImagePipeline().clearMemoryCaches()
+        imageLoader.memoryCache?.clear()
         super.onTrimMemory(level)
     }
 
     override fun onLowMemory() {
-        Fresco.getImagePipeline().clearMemoryCaches()
+        imageLoader.memoryCache?.clear()
         super.onLowMemory()
     }
 }

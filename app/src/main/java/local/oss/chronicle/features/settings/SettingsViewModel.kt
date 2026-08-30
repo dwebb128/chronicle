@@ -25,7 +25,6 @@ import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import local.oss.chronicle.features.download.MoveSyncLocationWorker
 import local.oss.chronicle.features.player.MediaServiceConnection
 import local.oss.chronicle.features.settings.SettingsViewModel.NavigationDestination.*
-import local.oss.chronicle.navigation.Navigator
 import local.oss.chronicle.util.Event
 import local.oss.chronicle.util.bytesAvailable
 import local.oss.chronicle.util.postEvent
@@ -56,7 +55,6 @@ class SettingsViewModel(
     private val workManager: WorkManager,
     private val plexPrefs: PlexPrefsRepo,
     private val collectionsRepository: CollectionsRepository,
-    private val navigator: Navigator,
 ) : ViewModel() {
     @Suppress("UNCHECKED_CAST")
     class Factory
@@ -72,7 +70,6 @@ class SettingsViewModel(
             private val workManager: WorkManager,
             private val plexPrefs: PlexPrefsRepo,
             private val collectionsRepository: CollectionsRepository,
-            private val navigator: Navigator,
         ) : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
@@ -87,7 +84,6 @@ class SettingsViewModel(
                         workManager = workManager,
                         plexPrefs = plexPrefs,
                         collectionsRepository = collectionsRepository,
-                        navigator = navigator,
                     ) as T
                 } else {
                     throw IllegalArgumentException(
@@ -682,17 +678,6 @@ class SettingsViewModel(
                 PreferenceModel(
                     PreferenceType.TITLE,
                     FormattableString.from(R.string.settings_category_account),
-                ),
-                PreferenceModel(
-                    PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.manage_accounts),
-                    explanation = FormattableString.from(R.string.manage_accounts_summary),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                navigator.showAccountList()
-                            }
-                        },
                 ),
                 PreferenceModel(
                     PreferenceType.CLICKABLE,

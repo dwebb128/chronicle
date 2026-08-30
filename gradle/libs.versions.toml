@@ -1,22 +1,20 @@
 # All entries are alphabetically sorted
 
 [versions]
+activityCompose = "1.9.3"
 agp = "9.2.1"
 androidxTest = "1.6.1" # 1.7.0 causes KSP/Dagger compatibility issues
 androidxTestCore = "1.5.0"
 androidxTestExt = "1.3.0"
 annotation = "1.8.2" # 1.9.0 causes KSP/Dagger compatibility issues
-appcompat = "1.7.0"
-billing = "9.1.0"
-browserx = "1.8.0" # 1.9.0 causes KSP/Dagger compatibility issues
+coil = "2.7.0"
+composeUi = "1.7.6"      # least-verified pin: newer Kotlin compiler + older Compose runtime
 coreTesting = "2.2.0"
 coroutines = "1.9.0" # 1.10.1 causes KSP/Dagger compatibility issues
 dagger = "2.52" # 2.54 causes KSP/Dagger compatibility issues
 espresso = "3.7.0"
 screengrab = "2.1.1"
 fetch = "3.3.0"
-fresco = "3.4.0" # 3.5.0 causes KSP processing errors
-glide = "4.16.0" # 4.17.0 not yet available
 hamcrest = "3.0"
 inferAnnotation = "0.18.0"
 junit = "4.13.2"
@@ -25,27 +23,25 @@ kotlinStdlib = "2.1.0"
 ksp = "2.3.2"
 ktlint = "12.1.2"
 lifecycle = "2.6.2"
-material = "1.12.0" # 1.13.0 causes KSP/Dagger compatibility issues
 media3 = "1.5.0" # 1.6.0 causes KSP/Dagger compatibility issues
 mockk = "1.13.14"
 mockito-kotlin = "5.2.1"
 moshi = "1.15.2"
 okhttp3 = "4.12.0" # 4.13.0 not yet available
-oss = "17.1.0" # 17.2.0 causes KSP/Dagger compatibility issues
-ossPlugin = "0.10.9"
 playPublisher = "3.9.1"
 result = "1.1.18"
 retrofit = "2.11.0"
 robolectric = "4.13"
 room = "2.7.0"
-seismic = "1.0.3"
 security-crypto = "1.1.0-alpha06"
-swiperefresh = "1.2.0"
 timber = "5.0.1"
 truth = "1.1.3"
+wearCompose = "1.4.0"
+wearOngoing = "1.0.0"
 work = "2.9.1" # 2.10.0 causes KSP/Dagger compatibility issues
 
 [libraries]
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
 androidx-arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "coreTesting" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTest" }
@@ -53,9 +49,13 @@ androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version
 androidx-test-ext-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "androidxTestExt" }
 androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTest" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTest" }
-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
-browserx = { group = "androidx.browser", name = "browser", version.ref = "browserx" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeUi" }
+compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeUi" }
+compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "composeUi" }
+compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "composeUi" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "composeUi" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "composeUi" }
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 dagger = { group = "com.google.dagger", name = "dagger", version.ref = "dagger" }
@@ -65,15 +65,12 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 screengrab = { group = "tools.fastlane", name = "screengrab", version.ref = "screengrab" }
 facebook-infer-annotation = { group = "com.facebook.infer.annotation", name = "infer-annotation", version.ref = "inferAnnotation" }
 fetch = { group = "com.github.tonyofrancis.Fetch", name = "fetch2", version.ref = "fetch" }
-fresco = { group = "com.facebook.fresco", name = "fresco", version.ref = "fresco" }
-fresco-imagepipeline = { group = "com.facebook.fresco", name = "imagepipeline-okhttp3", version.ref = "fresco" }
-glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 hamcrest = { group = "org.hamcrest", name = "hamcrest", version.ref = "hamcrest" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
+lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-media3-cast = { group = "androidx.media3", name = "media3-cast", version.ref = "media3" }
 media3-datasource = { group = "androidx.media3", name = "media3-datasource", version.ref = "media3" }
 media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
@@ -85,8 +82,6 @@ moshi = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "mo
 moshi-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
 okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp3" }
 okhttp3-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp3" }
-oss = { group = "com.google.android.gms", name = "play-services-oss-licenses", version.ref = "oss" }
-oss-plugin = { group = "com.google.android.gms", name = "oss-licenses-plugin", version.ref = "ossPlugin" }
 result = { group = "com.michael-bull.kotlin-result", name = "kotlin-result", version.ref = "result" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
@@ -95,15 +90,18 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
-seismic = { group = "com.squareup", name = "seismic", version.ref = "seismic" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
-swiperefresh = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefresh" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
+wear-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "wearCompose" }
+wear-ongoing = { group = "androidx.wear", name = "wear-ongoing", version.ref = "wearOngoing" }
 work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

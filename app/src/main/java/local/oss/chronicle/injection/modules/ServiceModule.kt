@@ -18,7 +18,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import dagger.Module
 import dagger.Provides
 import kotlinx.coroutines.CompletableJob
-import local.oss.chronicle.R
 import local.oss.chronicle.application.MainActivity
 import local.oss.chronicle.data.sources.plex.APP_NAME
 import local.oss.chronicle.data.sources.plex.PlexHttpDataSourceFactory
@@ -28,7 +27,6 @@ import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYE
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MAX_BUFFER_DURATION_MILLIS
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MIN_BUFFER_DURATION_MILLIS
 import local.oss.chronicle.injection.scopes.ServiceScope
-import local.oss.chronicle.util.PackageValidator
 import local.oss.chronicle.util.SecurityUtils
 import timber.log.Timber
 import kotlin.time.ExperimentalTime
@@ -183,10 +181,6 @@ class ServiceModule(private val service: MediaPlayerService) {
         // This delegates to the same instance as plexDataSourceFactory()
         return concreteFactory
     }
-
-    @Provides
-    @ServiceScope
-    fun packageValidator() = PackageValidator(service, R.xml.auto_allowed_callers)
 
     @Provides
     @ServiceScope

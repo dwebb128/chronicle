@@ -5,9 +5,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.play.publisher)
+    alias(libs.plugins.compose.compiler)
     id("kotlin-parcelize")
-    id("kotlin-kapt") // Still needed for data binding
-    id("com.google.android.gms.oss-licenses-plugin")
 }
 
 android {
@@ -23,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "local.oss.chronicle"
-        minSdk = 30
+        minSdk = 34
         targetSdk = 36
         versionCode = 67
         versionName = "0.62.4"
@@ -83,12 +82,11 @@ android {
         freeCompilerArgs +=
             listOf(
                 "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                // Enable Kotlin 2.0+ support for KAPT
-                "-Xallow-unstable-dependencies",
             )
     }
     buildFeatures {
-        dataBinding = true
+        dataBinding = false
+        compose = true
         buildConfig = true
     }
 
@@ -109,15 +107,6 @@ android {
         }
         getByName("androidTest") {
             java.srcDir("src/testShared/java")
-        }
-    }
-}
-
-afterEvaluate {
-    tasks.matching { it.name.endsWith("OssLicensesCleanUp") }.configureEach {
-        val dependencyTaskName = name.replace("LicensesCleanUp", "DependencyTask")
-        tasks.findByName(dependencyTaskName)?.let { dependencyTask ->
-            dependsOn(dependencyTask)
         }
     }
 }
@@ -149,30 +138,19 @@ ksp {
     arg("room.expandProjection", "true")
 }
 
-// KAPT still needed for data binding (doesn't fully support KSP yet)
-kapt {
-    correctErrorTypes = true
-}
-
 dependencies {
 
-    implementation(libs.material)
-    implementation(libs.glide)
     implementation(libs.timber)
     implementation(libs.fetch)
     implementation(libs.work)
     implementation(libs.result)
-    implementation(libs.swiperefresh)
-    implementation(libs.seismic)
     implementation(libs.security.crypto)
-    implementation(libs.billing.ktx)
-    implementation(libs.browserx)
-    implementation(libs.oss)
-    implementation(libs.appcompat)
     implementation(libs.annotation)
     implementation(libs.coroutines)
     implementation(libs.lifecycle.livedata.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
     compileOnly(libs.facebook.infer.annotation)
 
     implementation(libs.retrofit)
@@ -185,8 +163,7 @@ dependencies {
     // Removed moshi-codegen KAPT processor - deprecated for Kotlin 2.x
     // Moshi will use reflection-based adapters instead
 
-    implementation(libs.fresco)
-    implementation(libs.fresco.imagepipeline)
+    implementation(libs.coil.compose)
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
@@ -199,7 +176,19 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
     implementation(libs.media3.datasource)
-    implementation(libs.media3.cast)
+
+    implementation(libs.activity.compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.runtime.livedata)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+
+    implementation(libs.wear.compose.foundation)
+    implementation(libs.wear.compose.material)
+    implementation(libs.wear.compose.navigation)
+    implementation(libs.wear.ongoing)
 
     /*
      * Local Tests
@@ -228,14 +217,11 @@ dependencies {
     androidTestImplementation(libs.truth)
     androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.coroutines.test)
-    androidTestImplementation(libs.espresso.core)
-    androidTestImplementation(libs.espresso.contrib)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.ext.junit.ktx)
     androidTestImplementation(libs.room.testing)
-    androidTestImplementation(libs.screengrab)
 }
 
 // tasks.matching { it.name.contains("DebugAndroidTest") && !it.name.contains("Lint") }.configureEach {
