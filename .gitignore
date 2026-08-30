@@ -52,3 +52,6 @@ Desktop.ini
 ehthumbs.db
 Icon?
 Thumbs.db
+
+# Kotlin compiler daemon scratch files
+.kotlin/
