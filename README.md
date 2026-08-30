@@ -22,6 +22,11 @@ For more screenshots and information, visit [www.chronicleapp.net](https://www.c
 
 > **Note:** The screenshots linked above are from the earlier phone version of the app and do not yet reflect the Wear OS UI.
 
+### Installing from source
+
+See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build the Wear OS app and sideload it
+onto a watch or a Wear OS emulator, plus how to build the older phone app from `main`.
+
 ### Reporting Bugs
 
 Found a bug? Please report it in the [GitHub Issues](https://github.com/germann/chronicle/issues) section. Your feedback helps improve the app for everyone!
