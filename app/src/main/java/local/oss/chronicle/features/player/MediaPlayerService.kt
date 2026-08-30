@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.os.Process
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
@@ -32,7 +33,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.*
-import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.R
 import local.oss.chronicle.application.ChronicleApplication
 import local.oss.chronicle.application.Injector
@@ -57,7 +57,6 @@ import local.oss.chronicle.features.player.SleepTimer.SleepTimerAction
 import local.oss.chronicle.injection.components.DaggerServiceComponent
 import local.oss.chronicle.injection.modules.ServiceModule
 import local.oss.chronicle.util.Event
-import local.oss.chronicle.util.PackageValidator
 import local.oss.chronicle.util.SecurityUtils
 import local.oss.chronicle.util.ServiceUtils
 import timber.log.Timber
@@ -80,9 +79,6 @@ class MediaPlayerService :
 
     @Inject
     lateinit var onMediaChangedCallback: OnMediaChangedCallback
-
-    @Inject
-    lateinit var packageValidator: PackageValidator
 
     @Inject
     lateinit var notificationBuilder: NotificationBuilder
@@ -134,6 +130,9 @@ class MediaPlayerService :
 
     @Inject
     lateinit var librarySyncRepository: LibrarySyncRepository
+
+    @Inject
+    lateinit var audioOutputMonitor: AudioOutputMonitor
 
     companion object {
         /** Strings used by plex to indicate playback state */
@@ -291,6 +290,11 @@ class MediaPlayerService :
         voiceCommandBridgeAudio.initialize()
 
         updateAudioAttrs(exoPlayer)
+        // WAKE_LOCK is only meaningful with this: keep the CPU awake for network-backed
+        // streaming playback while the screen is off (Wear OS watch face showing).
+        exoPlayer.setWakeMode(C.WAKE_MODE_NETWORK)
+
+        audioOutputMonitor.register()
 
         prefsRepo.registerPrefsListener(prefsListener)
 
@@ -516,10 +520,6 @@ class MediaPlayerService :
             if (!isRefreshing) {
                 Timber.d("[AndroidAuto] Library sync completed, refreshing browse tree")
                 notifyChildrenChanged(CHRONICLE_MEDIA_ROOT_ID)
-                notifyChildrenChanged(getString(R.string.auto_category_recently_added))
-                notifyChildrenChanged(getString(R.string.auto_category_library))
-                notifyChildrenChanged(getString(R.string.auto_category_recently_listened))
-                notifyChildrenChanged(getString(R.string.auto_category_offline))
             }
         }
 
@@ -741,6 +741,8 @@ class MediaPlayerService :
         // Release TTS resources
         voiceCommandBridgeAudio.release()
 
+        audioOutputMonitor.unregister()
+
         plexLoginRepo.loginEvent.removeObserver(loginStateObserver)
         librarySyncRepository.isRefreshing.removeObserver(librarySyncObserver)
 
@@ -880,8 +882,8 @@ class MediaPlayerService :
             return
         }
 
-        if (parentId == CHRONICLE_MEDIA_EMPTY_ROOT || !prefsRepo.allowAuto) {
-            Timber.d("[AndroidAuto] Returning empty result (empty root or auto disabled)")
+        if (parentId == CHRONICLE_MEDIA_EMPTY_ROOT) {
+            Timber.d("[AndroidAuto] Returning empty result (empty root)")
             result.sendResult(mutableListOf())
             return
         }
@@ -939,95 +941,18 @@ class MediaPlayerService :
                                 return@withContext
                             }
 
-                            // Query content to determine tab visibility
-                            val recentlyListened = bookRepository.getRecentlyListenedAsync()
-                            val cachedBooks = bookRepository.getCachedAudiobooksAsync()
-
-                            // Build tab list conditionally based on content
-                            val tabs = mutableListOf<MediaBrowserCompat.MediaItem>()
-
-                            if (recentlyListened.isNotEmpty()) {
-                                tabs.add(
-                                    makeBrowsable(
-                                        getString(R.string.auto_category_recently_listened),
-                                        R.drawable.ic_recent,
-                                    ),
-                                )
-                            }
-
-                            if (cachedBooks.isNotEmpty()) {
-                                tabs.add(
-                                    makeBrowsable(
-                                        getString(R.string.auto_category_offline),
-                                        R.drawable.ic_cloud_download_white,
-                                    ),
-                                )
-                            }
-
-                            tabs.add(
-                                makeBrowsable(
-                                    getString(R.string.auto_category_recently_added),
-                                    R.drawable.ic_add,
-                                ),
-                            )
-
-                            tabs.add(
-                                makeBrowsable(
-                                    getString(R.string.auto_category_library),
-                                    R.drawable.nav_library,
-                                ),
-                            )
-
-                            Timber.d(
-                                "[AndroidAuto] Loading root categories: " +
-                                    "recentlyListened=${recentlyListened.size}, " +
-                                    "cachedBooks=${cachedBooks.size}, " +
-                                    "tabs=${tabs.size}",
-                            )
-                            result.sendResult(tabs)
-                        }
-                        getString(R.string.auto_category_recently_listened) -> {
-                            Timber.d("[AndroidAuto] Loading recently listened")
-                            val recentlyListened = bookRepository.getRecentlyListenedAsync()
+                            // Minimal flat root (the 4-tab Android Auto browse tree is cut):
+                            // a single flat list, recently-listened first so Wear playback
+                            // resumption and other system media surfaces surface the right
+                            // item, falling back to recently-added, then the full library.
                             val items =
-                                recentlyListened
+                                bookRepository.getRecentlyListenedAsync()
+                                    .ifEmpty { bookRepository.getRecentlyAddedAsync() }
+                                    .ifEmpty { bookRepository.getAllBooksAsync() }
                                     .filterNotNull()
                                     .map { it.toMediaItem(plexConfig) }
                                     .toMutableList()
-                            Timber.d("[AndroidAuto] Loaded ${items.size} recently listened items")
-                            result.sendResult(items)
-                        }
-                        getString(R.string.auto_category_recently_added) -> {
-                            Timber.d("[AndroidAuto] Loading recently added")
-                            val recentlyAdded = bookRepository.getRecentlyAddedAsync()
-                            val items =
-                                recentlyAdded
-                                    .filterNotNull()
-                                    .map { it.toMediaItem(plexConfig) }
-                                    .toMutableList()
-                            Timber.d("[AndroidAuto] Loaded ${items.size} recently added items")
-                            result.sendResult(items)
-                        }
-                        getString(R.string.auto_category_library) -> {
-                            Timber.d("[AndroidAuto] Loading full library")
-                            val books = bookRepository.getAllBooksAsync()
-                            val items =
-                                books
-                                    .filterNotNull()
-                                    .map { it.toMediaItem(plexConfig) }
-                                    .toMutableList()
-                            Timber.d("[AndroidAuto] Loaded ${items.size} library items")
-                            result.sendResult(items)
-                        }
-                        getString(R.string.auto_category_offline) -> {
-                            Timber.d("[AndroidAuto] Loading offline content")
-                            val offline = bookRepository.getCachedAudiobooksAsync()
-                            val items =
-                                offline
-                                    .filterNotNull()
-                                    .map { it.toMediaItem(plexConfig) }
-                                    .toMutableList()
-                            Timber.d("[AndroidAuto] Loaded ${items.size} offline items")
+                            Timber.d("[MediaBrowse] Loading flat root: ${items.size} items")
                             result.sendResult(items)
                         }
                         else -> {
@@ -1049,12 +974,6 @@ class MediaPlayerService :
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) {
         Timber.i("[AndroidAuto] onSearch: query='$query'")
-
-        if (!prefsRepo.allowAuto) {
-            Timber.w("[AndroidAuto] Search rejected - Android Auto is disabled")
-            result.sendResult(mutableListOf())
-            return
-        }
 
         if (query.isBlank()) {
             Timber.w("[AndroidAuto] Empty search query")
@@ -1089,13 +1008,16 @@ class MediaPlayerService :
     ): BrowserRoot? {
         Timber.i("[AndroidAuto] onGetRoot: package=$clientPackageName, uid=$clientUid")
 
-        val isClientLegal = packageValidator.isKnownCaller(clientPackageName, clientUid) || BuildConfig.DEBUG || !prefsRepo.strictAutoValidation
+        // Android Auto's certificate/package allowlist (PackageValidator) is gone; the only
+        // callers this standalone Wear app still needs to browse for are itself and the
+        // system (playback resumption / media surfaces on the watch).
+        val isClientLegal = clientUid == Process.myUid() || clientUid == Process.SYSTEM_UID
 
         val extras =
             Bundle().apply {
                 putBoolean(
                     CHRONICLE_MEDIA_SEARCH_SUPPORTED,
-                    isClientLegal && prefsRepo.allowAuto && plexLoginRepo.loginEvent.value?.peekContent() == LOGGED_IN_FULLY,
+                    isClientLegal && plexLoginRepo.loginEvent.value?.peekContent() == LOGGED_IN_FULLY,
                 )
                 mediaBrowserCompatStringField("EXTRA_MEDIA_SEARCH_SUPPORTED")?.let { putBoolean(it, true) }
                 mediaBrowserCompatStringField("EXTRA_SUGGESTED_PRESENTATION_DISPLAY_HINT")?.let { putBoolean(it, true) }
@@ -1107,13 +1029,6 @@ class MediaPlayerService :
             }
 
         return when {
-            !prefsRepo.allowAuto -> {
-                Timber.w("[AndroidAuto] Access denied - Android Auto is disabled")
-                setSessionCustomErrorMessage(
-                    getString(R.string.auto_access_error_auto_is_disabled),
-                )
-                BrowserRoot(CHRONICLE_MEDIA_EMPTY_ROOT, extras)
-            }
             !isClientLegal -> {
                 Timber.w("[AndroidAuto] Access denied - invalid client: $clientPackageName")
                 setSessionCustomErrorMessage(

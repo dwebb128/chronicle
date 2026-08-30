@@ -21,6 +21,8 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media.session.MediaButtonReceiver
+import androidx.wear.ongoing.OngoingActivity
+import androidx.wear.ongoing.Status
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.R
@@ -278,16 +280,28 @@ class NotificationBuilder
                     Pair(currentBook.title, currentBook.author)
                 }
 
-            return builder.setContentTitle(titles.first)
-                .setContentText(titles.second)
-                .setContentIntent(controller.sessionActivity)
-                .setDeleteIntent(stopPendingIntent)
-                .setOnlyAlertOnce(true)
-                .setSmallIcon(smallIcon)
-                .setLargeIcon(largeIcon)
-                .setStyle(mediaStyle)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            val configuredBuilder =
+                builder.setContentTitle(titles.first)
+                    .setContentText(titles.second)
+                    .setContentIntent(controller.sessionActivity)
+                    .setDeleteIntent(stopPendingIntent)
+                    .setOnlyAlertOnce(true)
+                    .setSmallIcon(smallIcon)
+                    .setLargeIcon(largeIcon)
+                    .setStyle(mediaStyle)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+            // Must run BEFORE the NotificationCompat.Builder.build() call below:
+            // OngoingActivity.apply() writes its extras into the builder itself, so applying it
+            // to an already-built Notification is a silent no-op (no crash, but a dead feature).
+            OngoingActivity.Builder(context, NOW_PLAYING_NOTIFICATION, configuredBuilder)
+                .setStaticIcon(R.drawable.ic_notification_icon_playing)
+                .setTouchIntent(contentPendingIntent)
+                .setStatus(Status.Builder().addTemplate(chapterTitle).build())
                 .build()
+                .apply(context)
+
+            return configuredBuilder.build()
         }
 
         private fun shouldCreateChannel() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !nowPlayingChannelExists()
