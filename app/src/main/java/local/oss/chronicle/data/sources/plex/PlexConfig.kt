@@ -1,11 +1,14 @@
 package local.oss.chronicle.data.sources.plex
 
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.request.ImageRequest
+import coil.request.CachePolicy
+import coil.request.ErrorResult
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.tonyodev.fetch2.Request
 import kotlinx.coroutines.*
 import local.oss.chronicle.R
@@ -186,15 +189,31 @@ class PlexConfig
             }
 
             Timber.i("Notification thumb uri is: $uri")
-            val imagePipeline = Fresco.getImagePipeline()
+            val imageLoader = Injector.get().imageLoader()
             return withContext(Dispatchers.IO) {
-                val request = ImageRequest.fromUri(uri)
-                try {
-                    val bm = imagePipeline.fetchDecodedImage(request, null).getImage()
+                val request =
+                    ImageRequest.Builder(appContext)
+                        .data(uri)
+                        // Notification and media-session artwork must be a software bitmap;
+                        // hardware bitmaps cannot be parcelled to the system UI process.
+                        .allowHardware(false)
+                        .apply {
+                            if (requireCached) {
+                                networkCachePolicy(CachePolicy.DISABLED)
+                            }
+                        }
+                        .build()
+
+                val result = imageLoader.execute(request)
+                val bitmap = ((result as? SuccessResult)?.drawable as? BitmapDrawable)?.bitmap
+
+                if (bitmap != null) {
                     Timber.i("Successfully retrieved album art for $thumb")
-                    bm
-                } catch (t: Throwable) {
-                    Timber.e("Failed to retrieve album art for $thumb: $t")
+                    bitmap
+                } else {
+                    Timber.e(
+                        "Failed to retrieve album art for $thumb: ${(result as? ErrorResult)?.throwable}",
+                    )
 
                     // Check if this was a 404 error by making a lightweight HEAD request
                     val is404 = checkIf404(uriString)
