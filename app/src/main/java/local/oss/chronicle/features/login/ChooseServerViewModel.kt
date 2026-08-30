@@ -6,7 +6,7 @@ import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.model.LoadingStatus
 import local.oss.chronicle.data.model.ServerModel
 import local.oss.chronicle.data.model.asServer
-import local.oss.chronicle.data.sources.plex.PlexLoginRepo
+import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
 import local.oss.chronicle.data.sources.plex.PlexLoginService
 import local.oss.chronicle.util.Event
 import local.oss.chronicle.util.postEvent
@@ -17,13 +17,13 @@ class ChooseServerViewModel
     @Inject
     constructor(
         private val plexLoginService: PlexLoginService,
-        private val plexLoginRepo: PlexLoginRepo,
+        private val plexLoginRepo: IPlexLoginRepo,
     ) : ViewModel() {
         class Factory
             @Inject
             constructor(
                 private val plexLoginService: PlexLoginService,
-                private val plexLoginRepo: PlexLoginRepo,
+                private val plexLoginRepo: IPlexLoginRepo,
             ) : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
