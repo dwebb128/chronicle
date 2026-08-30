@@ -11,8 +11,8 @@ import com.squareup.seismic.ShakeDetector
 import local.oss.chronicle.R
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.features.player.SleepTimer.SleepTimerAction.*
+import local.oss.chronicle.ui.components.FormattableString
 import local.oss.chronicle.util.showToast
-import local.oss.chronicle.views.BottomSheetChooser
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -85,7 +85,7 @@ class SimpleSleepTimer
                         )
                         showToast(
                             service,
-                            BottomSheetChooser.FormattableString.from(
+                            FormattableString.from(
                                 R.string.sleep_timer_extended_message,
                             ),
                             Toast.LENGTH_SHORT,

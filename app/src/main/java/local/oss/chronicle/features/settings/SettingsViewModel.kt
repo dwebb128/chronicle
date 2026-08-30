@@ -1,19 +1,17 @@
 package local.oss.chronicle.features.settings
 
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
-import android.text.format.Formatter
-import androidx.lifecycle.*
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import com.facebook.drawee.backends.pipeline.Fresco
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.map
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.R
-import local.oss.chronicle.application.FEATURE_FLAG_IS_AUTO_ENABLED
-import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.local.CollectionsRepository
 import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.ITrackRepository
@@ -21,28 +19,31 @@ import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
 import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
 import local.oss.chronicle.data.sources.plex.PlexConfig
-import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
-import local.oss.chronicle.features.download.MoveSyncLocationWorker
 import local.oss.chronicle.features.player.MediaServiceConnection
-import local.oss.chronicle.features.settings.SettingsViewModel.NavigationDestination.*
+import local.oss.chronicle.ui.components.BottomChooserItemListener
+import local.oss.chronicle.ui.components.BottomChooserListener
+import local.oss.chronicle.ui.components.BottomChooserState
+import local.oss.chronicle.ui.components.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
+import local.oss.chronicle.ui.components.FormattableString
 import local.oss.chronicle.util.Event
-import local.oss.chronicle.util.bytesAvailable
 import local.oss.chronicle.util.postEvent
-import local.oss.chronicle.views.BottomSheetChooser.*
-import local.oss.chronicle.views.BottomSheetChooser.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
 import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
 
 /**
- * Represents the UI state of the settings screen. Responsible for loading and displaying
- * [PreferenceModel]s.
+ * Wear-native rewrite of the settings screen's ViewModel (PLAN.md 5.7). The phone version built a
+ * ~40-row generic [PreferenceModel] list (much of it for cut features — premium, book cover style,
+ * sync location, Android Auto, subreddit/GitHub/licenses, the debug-info Easter egg) rendered by a
+ * RecyclerView. `SettingsScreen` instead renders a small, fixed set of Wear-appropriate rows
+ * directly against the typed [LiveData] exposed here, so this ViewModel now exposes preferences
+ * individually rather than as a generic list.
  *
- * Note: not using the built-in [PreferenceFragment] because making custom preferences is horrible
- *       and custom views or pop-ups are fine. This could be improved, though, it's quite indented
- *
- * TODO: Quite a bit of repetition of information in [PreferenceModel], making typos more likely.
- *       Might be worthwhile to look into alternatives used by other apps?
+ * Surviving rows (PLAN.md 5.7): offline mode, jump forward/back intervals, auto-rewind,
+ * skip-silent-audio, pause-on-interruption, refresh rate, delete downloaded files, log out,
+ * version/about. [bottomChooserState] is reused (via [OptionsDialog]) for the two rows that are
+ * still "pick one of several options" (jump interval, refresh rate) and for confirmations
+ * (delete downloaded files, log out) — the same [BottomChooserState] contract every other
+ * surviving ViewModel already emits.
  */
 class SettingsViewModel(
     private val bookRepository: IBookRepository,
@@ -52,8 +53,6 @@ class SettingsViewModel(
     private val plexLoginRepo: IPlexLoginRepo,
     private val cachedFileManager: ICachedFileManager,
     private val plexConfig: PlexConfig,
-    private val workManager: WorkManager,
-    private val plexPrefs: PlexPrefsRepo,
     private val collectionsRepository: CollectionsRepository,
 ) : ViewModel() {
     @Suppress("UNCHECKED_CAST")
@@ -62,13 +61,11 @@ class SettingsViewModel(
         constructor(
             private val bookRepository: IBookRepository,
             private val trackRepository: ITrackRepository,
-            private val prefsRepo: PrefsRepo,
             private val mediaServiceConnection: MediaServiceConnection,
+            private val prefsRepo: PrefsRepo,
             private val plexLoginRepo: IPlexLoginRepo,
             private val cachedFileManager: ICachedFileManager,
             private val plexConfig: PlexConfig,
-            private val workManager: WorkManager,
-            private val plexPrefs: PlexPrefsRepo,
             private val collectionsRepository: CollectionsRepository,
         ) : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -81,8 +78,6 @@ class SettingsViewModel(
                         plexLoginRepo = plexLoginRepo,
                         cachedFileManager = cachedFileManager,
                         plexConfig = plexConfig,
-                        workManager = workManager,
-                        plexPrefs = plexPrefs,
                         collectionsRepository = collectionsRepository,
                     ) as T
                 } else {
@@ -93,9 +88,22 @@ class SettingsViewModel(
             }
         }
 
-    private var _preferences = MutableLiveData(makePreferences())
-    val preferences: LiveData<List<PreferenceModel>>
-        get() = _preferences
+    /** Bumped on every SharedPreferences change so the `.map {}` values below refresh. */
+    private val prefsVersion = MutableLiveData(Unit)
+
+    val offlineMode: LiveData<Boolean> = prefsVersion.map { prefsRepo.offlineMode }
+    val skipSilence: LiveData<Boolean> = prefsVersion.map { prefsRepo.skipSilence }
+    val autoRewind: LiveData<Boolean> = prefsVersion.map { prefsRepo.autoRewind }
+    val pauseOnFocusLost: LiveData<Boolean> = prefsVersion.map { prefsRepo.pauseOnFocusLost }
+    val jumpForwardSeconds: LiveData<Long> = prefsVersion.map { prefsRepo.jumpForwardSeconds }
+    val jumpBackwardSeconds: LiveData<Long> = prefsVersion.map { prefsRepo.jumpBackwardSeconds }
+    val refreshRateMinutes: LiveData<Long> = prefsVersion.map { prefsRepo.refreshRateMinutes }
+
+    val versionName: String = BuildConfig.VERSION_NAME
+
+    private var _messageForUser = MutableLiveData<Event<FormattableString>>()
+    val messageForUser: LiveData<Event<FormattableString>>
+        get() = _messageForUser
 
     private var _bottomChooserState = MutableLiveData(EMPTY_BOTTOM_CHOOSER)
     val bottomChooserState: LiveData<BottomChooserState>
@@ -107,47 +115,30 @@ class SettingsViewModel(
         }
     }
 
-    private var _messageForUser = MutableLiveData<Event<FormattableString>>()
-    val messageForUser: LiveData<Event<FormattableString>>
-        get() = _messageForUser
-
-    private var _webLink = MutableLiveData<Event<String>>()
-    val webLink: LiveData<Event<String>>
-        get() = _webLink
-
-    private var _showLicenseActivity = MutableLiveData(false)
-    val showLicenseActivity: LiveData<Boolean>
-        get() = _showLicenseActivity
+    private fun hideBottomSheet() {
+        _bottomChooserState.postValue(
+            _bottomChooserState.value?.copy(shouldShow = false) ?: EMPTY_BOTTOM_CHOOSER,
+        )
+    }
 
     private fun showOptionsMenu(
-        options: List<FormattableString>,
         title: FormattableString,
+        options: List<FormattableString>,
         listener: BottomChooserListener,
     ) {
         _bottomChooserState.postValue(
             BottomChooserState(
-                options = options,
                 title = title,
+                options = options,
                 listener = listener,
                 shouldShow = true,
             ),
         )
     }
 
-    private var _upgradeToPremium = MutableLiveData<Event<Unit>>()
-    val upgradeToPremium: LiveData<Event<Unit>>
-        get() = _upgradeToPremium
-
-    private var _showDebugDialog = MutableLiveData<Event<Unit>>()
-    val showDebugDialog: LiveData<Event<Unit>>
-        get() = _showDebugDialog
-
-    private val tapCounter = TapCounter()
-
     private val prefsListener =
         OnSharedPreferenceChangeListener { _, _ ->
-            // Rebuild the prefs list whenever any prefs change
-            _preferences.postValue(makePreferences())
+            prefsVersion.postValue(Unit)
         }
 
     init {
@@ -158,811 +149,180 @@ class SettingsViewModel(
         prefsRepo.unregisterPrefsListener(prefsListener)
     }
 
-    fun startUpgradeToPremiumFlow() {
-        _upgradeToPremium.postEvent(Unit)
+    fun setOfflineMode(enabled: Boolean) {
+        prefsRepo.offlineMode = enabled
     }
 
-    private fun makePreferences(): List<PreferenceModel> {
-        val list =
-            mutableListOf(
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_premium_upgrade_label),
-                ),
-                if (prefsRepo.isPremium) {
-                    PreferenceModel(
-                        type = PreferenceType.CLICKABLE,
-                        title = FormattableString.from(R.string.settings_premium_unlocked_title),
-                        explanation =
-                            FormattableString.from(
-                                R.string.settings_premium_unlocked_explanation,
-                            ),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    _webLink.postEvent("https://www.chronicleapp.net/support")
-                                }
-                            },
-                    )
-                } else {
-                    PreferenceModel(
-                        type = PreferenceType.CLICKABLE,
-                        title = FormattableString.from(R.string.settings_premium_upgrade_label),
-                        explanation =
-                            FormattableString.from(
-                                R.string.settings_premium_upgrade_explanation,
-                            ),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    _webLink.postEvent("https://www.chronicleapp.net/support")
-                                }
-                            },
-                    )
+    fun setSkipSilence(enabled: Boolean) {
+        prefsRepo.skipSilence = enabled
+    }
+
+    fun setAutoRewind(enabled: Boolean) {
+        prefsRepo.autoRewind = enabled
+    }
+
+    fun setPauseOnFocusLost(enabled: Boolean) {
+        prefsRepo.pauseOnFocusLost = enabled
+    }
+
+    /** Shows a chooser of jump-forward-seconds presets, mirroring the phone's row of the same name. */
+    fun showJumpForwardChooser() {
+        showOptionsMenu(
+            title = FormattableString.from(R.string.settings_jump_forward_title),
+            options = jumpSecondsOptions(),
+            listener =
+                object : BottomChooserItemListener() {
+                    override fun onItemClicked(formattableString: FormattableString) {
+                        check(formattableString is FormattableString.ResourceString)
+                        prefsRepo.jumpForwardSeconds = jumpSecondsFor(formattableString.stringRes, 30L)
+                        hideBottomSheet()
+                    }
                 },
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_category_appearance),
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title =
-                        FormattableString.ResourceString(
-                            stringRes = R.string.settings_book_cover_type_value,
-                            placeHolderStrings = listOf(prefsRepo.bookCoverStyle),
-                        ),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_book_cover_type_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options =
-                                        listOf(
-                                            FormattableString.from(
-                                                R.string.settings_book_cover_type_square,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_book_cover_type_rect,
-                                            ),
-                                        ),
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_book_cover_type_label,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                check(
-                                                    formattableString is FormattableString.ResourceString,
-                                                )
+        )
+    }
 
-                                                when (formattableString.stringRes) {
-                                                    R.string.settings_book_cover_type_rect -> {
-                                                        prefsRepo.bookCoverStyle = "Rectangle"
-                                                    }
-                                                    R.string.settings_book_cover_type_square -> {
-                                                        prefsRepo.bookCoverStyle = "Square"
-                                                    }
-                                                    else -> throw NoWhenBranchMatchedException(
-                                                        "Unknown book cover type",
-                                                    )
-                                                }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_category_sync),
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title =
-                        FormattableString.ResourceString(
-                            stringRes = R.string.settings_refresh_rate_value,
-                            // feels gross
-                            placeHolderStrings =
-                                listOf(
-                                    when {
-                                        prefsRepo.refreshRateMinutes == 0L -> {
-                                            Injector.get()
-                                                .applicationContext().resources.getString(
-                                                    R.string.settings_refresh_rate_always,
-                                                )
-                                        }
-                                        prefsRepo.refreshRateMinutes < 60 -> {
-                                            "${prefsRepo.refreshRateMinutes} " +
-                                                Injector.get()
-                                                    .applicationContext().resources.getString(R.string.minutes)
-                                        }
-                                        prefsRepo.refreshRateMinutes < 60 * 24 -> {
-                                            "${prefsRepo.refreshRateMinutes / 60} " +
-                                                Injector.get()
-                                                    .applicationContext().resources.getString(R.string.hours)
-                                        }
-                                        prefsRepo.refreshRateMinutes <= 60 * 24 * 7 -> {
-                                            "${prefsRepo.refreshRateMinutes / (60 * 24)} " +
-                                                Injector.get()
-                                                    .applicationContext().resources.getString(R.string.days)
-                                        }
-                                        prefsRepo.refreshRateMinutes > 60 * 24 * 7 -> {
-                                            Injector.get()
-                                                .applicationContext().resources.getString(
-                                                    R.string.settings_refresh_rate_manual,
-                                                )
-                                        }
-                                        else -> throw NoWhenBranchMatchedException()
-                                    },
-                                ),
-                        ),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_refresh_rate_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options =
-                                        listOf(
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_always,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_15_minutes,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_1_hour,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_3_hours,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_6_hours,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_1_day,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_3_days,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_1_week,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_refresh_rate_manual,
-                                            ),
-                                        ),
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_refresh_rate_title,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                check(
-                                                    formattableString is FormattableString.ResourceString,
-                                                )
-                                                when (formattableString.stringRes) {
-                                                    R.string.settings_refresh_rate_always ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            0
-                                                    R.string.settings_refresh_rate_15_minutes ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            15
-                                                    R.string.settings_refresh_rate_1_hour ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            60
-                                                    R.string.settings_refresh_rate_3_hours ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            180
-                                                    R.string.settings_refresh_rate_6_hours ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            360
-                                                    R.string.settings_refresh_rate_1_day ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            60 * 24
-                                                    R.string.settings_refresh_rate_3_days ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            60 * 24 * 3
-                                                    R.string.settings_refresh_rate_1_week ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            60 * 24 * 7
-                                                    R.string.settings_refresh_rate_manual ->
-                                                        prefsRepo.refreshRateMinutes =
-                                                            Long.MAX_VALUE
-                                                    else -> throw NoWhenBranchMatchedException(
-                                                        "Unknown item: ${formattableString.stringRes}",
-                                                    )
-                                                }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title =
-                        FormattableString.ResourceString(
-                            stringRes = R.string.settings_sync_location_value,
-                            placeHolderStrings =
-                                listOf(
-                                    Formatter.formatFileSize(
-                                        Injector.get().applicationContext(),
-                                        prefsRepo.cachedMediaDir.bytesAvailable(),
-                                    ),
-                                ),
-                        ),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_sync_location_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options =
-                                        Injector.get().externalDeviceDirs().map {
-                                            FormattableString.ResourceString(
-                                                stringRes = R.string.settings_sync_space_available,
-                                                placeHolderStrings =
-                                                    listOf(
-                                                        it.path,
-                                                        Formatter.formatFileSize(
-                                                            Injector.get().applicationContext(),
-                                                            it.bytesAvailable(),
-                                                        ),
-                                                    ),
-                                            )
-                                        },
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_sync_location_title,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                check(
-                                                    formattableString is FormattableString.ResourceString,
-                                                )
+    fun showJumpBackwardChooser() {
+        showOptionsMenu(
+            title = FormattableString.from(R.string.settings_jump_backward_title),
+            options = jumpSecondsOptions(),
+            listener =
+                object : BottomChooserItemListener() {
+                    override fun onItemClicked(formattableString: FormattableString) {
+                        check(formattableString is FormattableString.ResourceString)
+                        prefsRepo.jumpBackwardSeconds = jumpSecondsFor(formattableString.stringRes, 10L)
+                        hideBottomSheet()
+                    }
+                },
+        )
+    }
 
-                                                val chosen = formattableString.placeHolderStrings[0]
-                                                val syncLoc =
-                                                    Injector.get().externalDeviceDirs().firstOrNull {
-                                                        chosen.contains(it.path)
-                                                    }
-                                                if (syncLoc != null) {
-                                                    setSyncLocation(syncLoc)
-                                                }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_delete_synced_title),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_delete_synced_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options = listOf(FormattableString.yes, FormattableString.no),
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_delete_synced_confirm,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                when (formattableString) {
-                                                    FormattableString.yes -> {
-                                                        viewModelScope.launch {
-                                                            val deletedFileCount =
-                                                                cachedFileManager.uncacheAllInLibrary()
-                                                            showUserMessage(
-                                                                FormattableString.ResourceString(
-                                                                    R.string.settings_delete_synced_response,
-                                                                    placeHolderStrings =
-                                                                        listOf(
-                                                                            deletedFileCount.toString(),
-                                                                        ),
-                                                                ),
-                                                            )
-                                                        }
-                                                    }
-                                                    else -> {
-                                                    } // do nothing
-                                                }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    PreferenceType.BOOLEAN,
-                    FormattableString.from(R.string.settings_offline_mode_title),
-                    PrefsRepo.KEY_OFFLINE_MODE,
-                    defaultValue = prefsRepo.offlineMode,
-                ),
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_category_playback),
-                ),
-                PreferenceModel(
-                    PreferenceType.BOOLEAN,
-                    FormattableString.from(R.string.settings_skip_silent_audio),
-                    PrefsRepo.KEY_SKIP_SILENCE,
-                    defaultValue = prefsRepo.skipSilence,
-                ),
-                PreferenceModel(
-                    PreferenceType.BOOLEAN,
-                    FormattableString.from(R.string.settings_auto_rewind),
-                    PrefsRepo.KEY_AUTO_REWIND_ENABLED,
-                    FormattableString.from(R.string.settings_auto_rewind_explanation),
-                    defaultValue = prefsRepo.autoRewind,
-                ),
-                PreferenceModel(
-                    type = PreferenceType.BOOLEAN,
-                    title = FormattableString.from(R.string.settings_shake_to_snooze_title),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_shake_to_snooze_explanation,
-                        ),
-                    key = PrefsRepo.KEY_SHAKE_TO_SNOOZE_ENABLED,
-                    defaultValue = prefsRepo.shakeToSnooze,
-                ),
-                PreferenceModel(
-                    type = PreferenceType.BOOLEAN,
-                    title = FormattableString.from(R.string.settings_pause_on_focus_lost_title),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_pause_on_focus_lost_explanation,
-                        ),
-                    key = PrefsRepo.KEY_PAUSE_ON_FOCUS_LOST,
-                    defaultValue = prefsRepo.pauseOnFocusLost,
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title =
-                        FormattableString.ResourceString(
-                            stringRes = R.string.settings_jump_forward_value,
-                            // feels gross
-                            placeHolderStrings =
-                                listOf(
-                                    "${prefsRepo.jumpForwardSeconds} " +
-                                        Injector.get()
-                                            .applicationContext().resources.getString(R.string.seconds),
-                                ),
-                        ),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_jump_forward_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options =
-                                        listOf(
-                                            FormattableString.from(
-                                                R.string.settings_jump_10_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_15_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_20_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_30_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_60_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_90_seconds,
-                                            ),
-                                        ),
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_jump_forward_title,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                check(
-                                                    formattableString is FormattableString.ResourceString,
-                                                )
-                                                prefsRepo.jumpForwardSeconds =
-                                                    when (formattableString.stringRes) {
-                                                        R.string.settings_jump_10_seconds -> 10L
-                                                        R.string.settings_jump_15_seconds -> 15L
-                                                        R.string.settings_jump_20_seconds -> 20L
-                                                        R.string.settings_jump_30_seconds -> 30L
-                                                        R.string.settings_jump_60_seconds -> 60L
-                                                        R.string.settings_jump_90_seconds -> 90L
-                                                        else -> 30L
-                                                    }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title =
-                        FormattableString.ResourceString(
-                            stringRes = R.string.settings_jump_backward_value,
-                            // feels gross
-                            placeHolderStrings =
-                                listOf(
-                                    "${prefsRepo.jumpBackwardSeconds} " +
-                                        Injector.get()
-                                            .applicationContext().resources.getString(R.string.seconds),
-                                ),
-                        ),
-                    explanation =
-                        FormattableString.from(
-                            R.string.settings_jump_backward_explanation,
-                        ),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                showOptionsMenu(
-                                    options =
-                                        listOf(
-                                            FormattableString.from(
-                                                R.string.settings_jump_10_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_15_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_20_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_30_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_60_seconds,
-                                            ),
-                                            FormattableString.from(
-                                                R.string.settings_jump_90_seconds,
-                                            ),
-                                        ),
-                                    title =
-                                        FormattableString.from(
-                                            R.string.settings_jump_backward_title,
-                                        ),
-                                    listener =
-                                        object : BottomChooserItemListener() {
-                                            override fun onItemClicked(formattableString: FormattableString) {
-                                                check(
-                                                    formattableString is FormattableString.ResourceString,
-                                                )
-                                                prefsRepo.jumpBackwardSeconds =
-                                                    when (formattableString.stringRes) {
-                                                        R.string.settings_jump_10_seconds -> 10L
-                                                        R.string.settings_jump_15_seconds -> 15L
-                                                        R.string.settings_jump_20_seconds -> 20L
-                                                        R.string.settings_jump_30_seconds -> 30L
-                                                        R.string.settings_jump_60_seconds -> 60L
-                                                        R.string.settings_jump_90_seconds -> 90L
-                                                        else -> 10L
-                                                    }
-                                                setBottomSheetVisibility(false)
-                                            }
-                                        },
-                                )
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_category_account),
-                ),
-                PreferenceModel(
-                    PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_log_out),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                viewModelScope.launch {
-                                    val logout = {
-                                        viewModelScope.launch {
-                                            cachedFileManager.uncacheAllInLibrary()
-                                        }
-                                        plexConfig.clear()
-                                        mediaServiceConnection.transportControls?.stop()
-                                        clearConfig(RETURN_TO_LOGIN)
-                                    }
-                                    if (!cachedFileManager.hasUserCachedTracks()) {
-                                        logout()
-                                        return@launch
-                                    }
-                                    showOptionsMenu(
-                                        title =
-                                            FormattableString.from(
-                                                R.string.settings_clear_downloads_warning,
-                                            ),
-                                        options =
-                                            listOf(
-                                                FormattableString.yes,
-                                                FormattableString.no,
-                                            ),
-                                        listener =
-                                            object : BottomChooserItemListener() {
-                                                override fun onItemClicked(formattableString: FormattableString) {
-                                                    if (formattableString == FormattableString.yes) {
-                                                        logout()
-                                                    }
-                                                    setBottomSheetVisibility(false)
-                                                }
-                                            },
-                                    )
-                                }
-                                Timber.i("Logging out")
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_category_etc),
-                ),
-                PreferenceModel(
-                    PreferenceType.BOOLEAN,
-                    FormattableString.from(R.string.settings_strict_auto_validation_title),
-                    explanation = FormattableString.from(R.string.settings_strict_auto_validation_explanation),
-                    key = PrefsRepo.KEY_STRICT_AUTO_VALIDATION,
-                    defaultValue = prefsRepo.strictAutoValidation,
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_subreddit_title),
-                    explanation = FormattableString.from(R.string.settings_subreddit_explanation),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                _webLink.postEvent("https://www.reddit.com/r/ChronicleEpilogueApp")
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_github_title),
-                    explanation = FormattableString.from(R.string.settings_github_explanation),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                _webLink.postEvent("https://github.com/fabiogermann/chronicle")
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_version_title),
-                    explanation = FormattableString.from(BuildConfig.VERSION_NAME),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                onVersionTapped()
-                            }
-                        },
-                ),
-                PreferenceModel(
-                    type = PreferenceType.CLICKABLE,
-                    title = FormattableString.from(R.string.settings_licenses_title),
-                    explanation = FormattableString.from(R.string.settings_licenses_explanation),
-                    click =
-                        object : PreferenceClick {
-                            override fun onClick() {
-                                _showLicenseActivity.postValue(true)
-                            }
-                        },
-                ),
-            )
+    private fun jumpSecondsOptions() =
+        listOf(
+            FormattableString.from(R.string.settings_jump_10_seconds),
+            FormattableString.from(R.string.settings_jump_15_seconds),
+            FormattableString.from(R.string.settings_jump_20_seconds),
+            FormattableString.from(R.string.settings_jump_30_seconds),
+            FormattableString.from(R.string.settings_jump_60_seconds),
+            FormattableString.from(R.string.settings_jump_90_seconds),
+        )
 
-        if (BuildConfig.DEBUG) {
-            list.addAll(
+    private fun jumpSecondsFor(
+        stringRes: Int,
+        default: Long,
+    ): Long =
+        when (stringRes) {
+            R.string.settings_jump_10_seconds -> 10L
+            R.string.settings_jump_15_seconds -> 15L
+            R.string.settings_jump_20_seconds -> 20L
+            R.string.settings_jump_30_seconds -> 30L
+            R.string.settings_jump_60_seconds -> 60L
+            R.string.settings_jump_90_seconds -> 90L
+            else -> default
+        }
+
+    /** Shows a chooser of refresh-rate presets, mirroring the phone's row of the same name. */
+    fun showRefreshRateChooser() {
+        showOptionsMenu(
+            title = FormattableString.from(R.string.settings_refresh_rate_title),
+            options =
                 listOf(
-                    PreferenceModel(
-                        PreferenceType.TITLE,
-                        FormattableString.from(string = "Developer options"),
-                    ),
-                    PreferenceModel(
-                        PreferenceType.CLICKABLE,
-                        FormattableString.from(string = "Clear shared prefs"),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    prefsRepo.clearAll()
-                                }
-                            },
-                    ),
-                    PreferenceModel(
-                        PreferenceType.CLICKABLE,
-                        FormattableString.from(string = "Clear DB"),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    clearConfig(clearDownloads = false)
-                                }
-                            },
-                    ),
-                    PreferenceModel(
-                        PreferenceType.CLICKABLE,
-                        FormattableString.from(string = "Clear cached images"),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    viewModelScope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            Fresco.getImagePipeline().clearCaches()
-                                        }
-                                    }
-                                }
-                            },
-                    ),
-                    PreferenceModel(
-                        PreferenceType.BOOLEAN,
-                        FormattableString.from(string = "Disable local progress tracking"),
-                        PrefsRepo.KEY_DEBUG_DISABLE_PROGRESS,
-                        defaultValue = false,
-                    ),
+                    FormattableString.from(R.string.settings_refresh_rate_always),
+                    FormattableString.from(R.string.settings_refresh_rate_15_minutes),
+                    FormattableString.from(R.string.settings_refresh_rate_1_hour),
+                    FormattableString.from(R.string.settings_refresh_rate_3_hours),
+                    FormattableString.from(R.string.settings_refresh_rate_6_hours),
+                    FormattableString.from(R.string.settings_refresh_rate_1_day),
+                    FormattableString.from(R.string.settings_refresh_rate_3_days),
+                    FormattableString.from(R.string.settings_refresh_rate_1_week),
+                    FormattableString.from(R.string.settings_refresh_rate_manual),
                 ),
+            listener =
+                object : BottomChooserItemListener() {
+                    override fun onItemClicked(formattableString: FormattableString) {
+                        check(formattableString is FormattableString.ResourceString)
+                        prefsRepo.refreshRateMinutes =
+                            when (formattableString.stringRes) {
+                                R.string.settings_refresh_rate_always -> 0L
+                                R.string.settings_refresh_rate_15_minutes -> 15L
+                                R.string.settings_refresh_rate_1_hour -> 60L
+                                R.string.settings_refresh_rate_3_hours -> 180L
+                                R.string.settings_refresh_rate_6_hours -> 360L
+                                R.string.settings_refresh_rate_1_day -> 60L * 24
+                                R.string.settings_refresh_rate_3_days -> 60L * 24 * 3
+                                R.string.settings_refresh_rate_1_week -> 60L * 24 * 7
+                                R.string.settings_refresh_rate_manual -> Long.MAX_VALUE
+                                else -> throw NoWhenBranchMatchedException(
+                                    "Unknown refresh rate option",
+                                )
+                            }
+                        hideBottomSheet()
+                    }
+                },
+        )
+    }
+
+    fun confirmDeleteDownloadedFiles() {
+        showOptionsMenu(
+            title = FormattableString.from(R.string.settings_clear_downloads_warning),
+            options = listOf(FormattableString.yes, FormattableString.no),
+            listener =
+                object : BottomChooserItemListener() {
+                    override fun onItemClicked(formattableString: FormattableString) {
+                        if (formattableString == FormattableString.yes) {
+                            viewModelScope.launch {
+                                val deletedFileCount = cachedFileManager.uncacheAllInLibrary()
+                                showUserMessage(
+                                    FormattableString.ResourceString(
+                                        R.string.settings_delete_synced_response,
+                                        placeHolderStrings = listOf(deletedFileCount.toString()),
+                                    ),
+                                )
+                            }
+                        }
+                        hideBottomSheet()
+                    }
+                },
+        )
+    }
+
+    fun confirmLogOut() {
+        viewModelScope.launch {
+            if (!cachedFileManager.hasUserCachedTracks()) {
+                logOut()
+                return@launch
+            }
+            showOptionsMenu(
+                title = FormattableString.from(R.string.settings_clear_downloads_warning),
+                options = listOf(FormattableString.yes, FormattableString.no),
+                listener =
+                    object : BottomChooserItemListener() {
+                        override fun onItemClicked(formattableString: FormattableString) {
+                            if (formattableString == FormattableString.yes) {
+                                logOut()
+                            }
+                            hideBottomSheet()
+                        }
+                    },
             )
         }
-
-        if (FEATURE_FLAG_IS_AUTO_ENABLED) {
-            val autoRewindPref = list.find { it.key == PrefsRepo.KEY_AUTO_REWIND_ENABLED }
-            if (autoRewindPref != null) {
-                val insertIndex = list.indexOf(autoRewindPref)
-                if (insertIndex != -1) {
-                    list.add(
-                        insertIndex + 1,
-                        PreferenceModel(
-                            type = PreferenceType.BOOLEAN,
-                            title = FormattableString.from(R.string.allow_auto),
-                            explanation = FormattableString.from(R.string.settings_auto_enable_summary),
-                            key = PrefsRepo.KEY_ALLOW_AUTO,
-                            defaultValue = prefsRepo.allowAuto,
-                        ),
-                    )
-                    list.add(
-                        insertIndex + 2,
-                        PreferenceModel(
-                            type = PreferenceType.BOOLEAN,
-                            title = FormattableString.from(R.string.settings_voice_search_fallback_title),
-                            explanation = FormattableString.from(R.string.settings_voice_search_fallback_explanation),
-                            key = PrefsRepo.KEY_VOICE_SEARCH_FALLBACK,
-                            defaultValue = prefsRepo.voiceSearchFallbackEnabled,
-                        ),
-                    )
-                }
-            }
-        }
-
-        return list
     }
 
-    /**
-     * Sets future synced files to be downloaded to [syncDir] and moves existing synced files
-     * to [syncDir]
-     */
-    private fun setSyncLocation(syncDir: File) {
-        prefsRepo.cachedMediaDir = syncDir
-
-        val worker = OneTimeWorkRequestBuilder<MoveSyncLocationWorker>().build()
-
-        workManager.beginUniqueWork(
-            MoveSyncLocationWorker.WORKER_ID,
-            ExistingWorkPolicy.REPLACE,
-            worker,
-        ).enqueue()
-    }
-
-    private enum class NavigationDestination {
-        RETURN_TO_LIBRARY_CHOOSER,
-        RETURN_TO_SERVER_CHOOSER,
-        RETURN_TO_LOGIN,
-        RETURN_TO_USER_CHOOSER,
-        DO_NOT_NAVIGATE,
-    }
-
-    /**
-     * Clears the server cached data, and navigates to reset the data on a chooser depending on the
-     * [navigateTo] provided
-     */
-    private fun clearConfig(
-        navigateTo: NavigationDestination = DO_NOT_NAVIGATE,
-        clearDownloads: Boolean = true,
-    ) {
-        viewModelScope.launch(Injector.get().unhandledExceptionHandler()) {
-            if (clearDownloads) {
-                cachedFileManager.uncacheAllInLibrary()
-            }
+    private fun logOut() {
+        Timber.i("Logging out")
+        viewModelScope.launch {
+            cachedFileManager.uncacheAllInLibrary()
             withContext(Dispatchers.IO) {
                 bookRepository.clear()
                 trackRepository.clear()
                 collectionsRepository.clear()
             }
             mediaServiceConnection.transportControls?.stop()
-            when (navigateTo) {
-                RETURN_TO_LIBRARY_CHOOSER -> plexConfig.clearLibrary()
-                RETURN_TO_SERVER_CHOOSER -> plexConfig.clearServer()
-                RETURN_TO_LOGIN -> plexConfig.clear()
-                RETURN_TO_USER_CHOOSER -> plexConfig.clearUser()
-                DO_NOT_NAVIGATE -> {
-                }
-            }
+            plexConfig.clear()
             plexLoginRepo.determineLoginState()
         }
     }
 
     fun showUserMessage(formattableString: FormattableString) {
         _messageForUser.postEvent(formattableString)
-    }
-
-    fun setShowLicenseActivity(showLicense: Boolean) {
-        _showLicenseActivity.postValue(showLicense)
-    }
-
-    fun onVersionTapped() {
-        if (tapCounter.recordTap()) {
-            _showDebugDialog.postEvent(Unit)
-        }
-    }
-
-    /**
-     * Tracks taps within a time window to detect Easter egg trigger
-     */
-    class TapCounter(
-        private val requiredTaps: Int = 10,
-        private val windowMs: Long = 15_000L,
-    ) {
-        private val tapTimestamps = mutableListOf<Long>()
-
-        /**
-         * Records a tap and returns true if the threshold was reached
-         */
-        fun recordTap(): Boolean {
-            val now = System.currentTimeMillis()
-
-            // Remove old taps outside the window
-            tapTimestamps.removeAll { now - it > windowMs }
-
-            // Add current tap
-            tapTimestamps.add(now)
-
-            // Check threshold
-            if (tapTimestamps.size >= requiredTaps) {
-                tapTimestamps.clear()
-                return true
-            }
-
-            return false
-        }
-
-        fun reset() {
-            tapTimestamps.clear()
-        }
     }
 }

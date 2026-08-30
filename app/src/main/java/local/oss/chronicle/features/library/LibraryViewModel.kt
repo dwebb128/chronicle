@@ -27,12 +27,13 @@ import local.oss.chronicle.data.model.MediaItemTrack
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
 import local.oss.chronicle.data.sources.plex.ICachedFileManager.CacheStatus.CACHED
 import local.oss.chronicle.data.sources.plex.ICachedFileManager.CacheStatus.NOT_CACHED
+import local.oss.chronicle.ui.components.BottomChooserItemListener
+import local.oss.chronicle.ui.components.BottomChooserListener
+import local.oss.chronicle.ui.components.BottomChooserState
+import local.oss.chronicle.ui.components.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
+import local.oss.chronicle.ui.components.FormattableString
+import local.oss.chronicle.ui.components.FormattableString.ResourceString
 import local.oss.chronicle.util.*
-import local.oss.chronicle.views.BottomSheetChooser
-import local.oss.chronicle.views.BottomSheetChooser.BottomChooserListener
-import local.oss.chronicle.views.BottomSheetChooser.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
-import local.oss.chronicle.views.BottomSheetChooser.FormattableString
-import local.oss.chronicle.views.BottomSheetChooser.FormattableString.ResourceString
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -176,7 +177,7 @@ class LibraryViewModel(
         get() = _isQueryEmpty
 
     private var _bottomChooserState = MutableLiveData(EMPTY_BOTTOM_CHOOSER)
-    val bottomChooserState: LiveData<BottomSheetChooser.BottomChooserState>
+    val bottomChooserState: LiveData<BottomChooserState>
         get() = _bottomChooserState
 
     private var _tracks = trackRepository.getAllTracks()
@@ -269,7 +270,7 @@ class LibraryViewModel(
             showOptionsMenu(
                 prompt,
                 listOf(FormattableString.yes, FormattableString.no),
-                object : BottomSheetChooser.BottomChooserItemListener() {
+                object : BottomChooserItemListener() {
                     override fun onItemClicked(formattableString: FormattableString) {
                         when (formattableString) {
                             FormattableString.yes -> downloadAll(tracks)
@@ -295,7 +296,7 @@ class LibraryViewModel(
         listener: BottomChooserListener,
     ) {
         _bottomChooserState.postValue(
-            BottomSheetChooser.BottomChooserState(
+            BottomChooserState(
                 title = title,
                 options = options,
                 listener = listener,

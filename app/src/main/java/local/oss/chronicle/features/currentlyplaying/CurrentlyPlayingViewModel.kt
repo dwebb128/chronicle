@@ -40,9 +40,12 @@ import local.oss.chronicle.features.player.SleepTimer.Companion.ARG_SLEEP_TIMER_
 import local.oss.chronicle.features.player.SleepTimer.Companion.ARG_SLEEP_TIMER_DURATION_MILLIS
 import local.oss.chronicle.features.player.SleepTimer.SleepTimerAction
 import local.oss.chronicle.features.player.SleepTimer.SleepTimerAction.*
+import local.oss.chronicle.ui.components.BottomChooserItemListener
+import local.oss.chronicle.ui.components.BottomChooserListener
+import local.oss.chronicle.ui.components.BottomChooserState
+import local.oss.chronicle.ui.components.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
+import local.oss.chronicle.ui.components.FormattableString
 import local.oss.chronicle.util.*
-import local.oss.chronicle.views.BottomSheetChooser.*
-import local.oss.chronicle.views.BottomSheetChooser.BottomChooserState.Companion.EMPTY_BOTTOM_CHOOSER
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -745,6 +748,45 @@ class CurrentlyPlayingViewModel(
             return
         }
         _showModalBottomSheetSpeedChooser.postEvent(Unit)
+    }
+
+    /**
+     * Sets the playback speed directly, for [ui.screens.PlaybackSpeedScreen]'s [Picker]-based UI
+     * (the phone's `ModalBottomSheetSpeedChooser` bottom sheet is gone on Wear). Writes straight
+     * to [PrefsRepo.playbackSpeed]; [speed] above already observes that key and will update.
+     */
+    fun setPlaybackSpeed(newSpeed: Float) {
+        prefsRepo.playbackSpeed = newSpeed.coerceIn(PLAYBACK_SPEED_MIN, PLAYBACK_SPEED_MAX)
+    }
+
+    /**
+     * Begins/extends/cancels the sleep timer directly, for [ui.screens.SleepTimerScreen]'s
+     * [Picker]-based UI. Bypasses [showSleepTimerOptions]'s [BottomChooserState] flow (which is
+     * still used for other confirmations, e.g. [jumpToChapter]) and sends the same
+     * [SleepTimer.ACTION_SLEEP_TIMER_CHANGE] broadcast [SimpleSleepTimer] already listens for.
+     */
+    fun beginSleepTimer(durationMillis: Long) {
+        sendSleepTimerAction(BEGIN, durationMillis)
+    }
+
+    fun extendSleepTimer(durationMillis: Long) {
+        sendSleepTimerAction(EXTEND, durationMillis)
+    }
+
+    fun cancelSleepTimer() {
+        sendSleepTimerAction(CANCEL, 0L)
+    }
+
+    private fun sendSleepTimerAction(
+        action: SleepTimerAction,
+        durationMillis: Long,
+    ) {
+        val intent =
+            Intent(SleepTimer.ACTION_SLEEP_TIMER_CHANGE).apply {
+                putExtra(ARG_SLEEP_TIMER_ACTION, action)
+                putExtra(ARG_SLEEP_TIMER_DURATION_MILLIS, durationMillis)
+            }
+        localBroadcastManager.sendBroadcast(intent)
     }
 
     private fun hideSleepTimerChooser() {
