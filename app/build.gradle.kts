@@ -172,6 +172,11 @@ dependencies {
     implementation(libs.dagger)
     ksp(libs.dagger.compiler)
 
+    // MediaPlayerService extends androidx.media.MediaBrowserServiceCompat, and the playback
+    // layer is still written against the android.support.v4.media.* compat types. This used
+    // to arrive transitively via media3-cast, which Wear does not need; declare it directly.
+    implementation(libs.media.compat)
+
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
