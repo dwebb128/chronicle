@@ -263,7 +263,7 @@ class SettingsViewModel(
 
     fun confirmDeleteDownloadedFiles() {
         showOptionsMenu(
-            title = FormattableString.from(R.string.settings_clear_downloads_warning),
+            title = FormattableString.from(R.string.settings_delete_synced_confirm),
             options = listOf(FormattableString.yes, FormattableString.no),
             listener =
                 object : BottomChooserItemListener() {

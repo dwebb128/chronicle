@@ -2,6 +2,9 @@ package local.oss.chronicle.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -12,6 +15,8 @@ import androidx.wear.compose.material.VignettePosition
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import local.oss.chronicle.application.Injector
+import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
 import local.oss.chronicle.injection.components.ActivityComponent
 import local.oss.chronicle.ui.screens.BookDetailsScreen
 import local.oss.chronicle.ui.screens.ChooseLibraryScreen
@@ -46,13 +51,13 @@ val LocalActivityComponent = staticCompositionLocalOf<ActivityComponent> {
  * lands those files — nav argument extraction (bookId) already happens here and should not be
  * duplicated inside the screen.
  *
- * Login-state-driven auto-navigation (LoginState -> start destination / auto-advance as the user
- * logs in — PLAN.md 5.3) is intentionally NOT wired here: it depends on the real `LoginViewModel`
- * shape, which Wave 2c is revising for the plex.tv/link flow (PLAN.md section 7). Wave 2a/2c
- * should add a `LaunchedEffect` here (or in a thin wrapper) observing
- * `IPlexLoginRepo.loginEvent`/`LoginViewModel` and calling
- * `navController.navigate(route) { popUpTo(navController.graph.id) { inclusive = true } }` to
- * replicate the old `Navigator.clearBackStack()` behavior described there.
+ * Login-state-driven auto-navigation (PLAN.md 5.3) is wired below: a `LaunchedEffect` observes
+ * [IPlexLoginRepo.loginEvent] directly (via [Injector], not through `LoginViewModel` — the event
+ * is a singleton-scoped signal every login step posts to, not something owned by one screen's
+ * ViewModel) and navigates with `popUpTo(...) { inclusive = true }`, replicating the old
+ * `Navigator.clearBackStack()` behavior. Built against the current, real
+ * [IPlexLoginRepo.LoginState] transition chain (user, then server, then library); Wave 2c owns
+ * `PlexLoginRepo`/`PlexAuthCoordinator` itself but is not expected to change this enum's shape.
  *
  * @param pendingRoute a one-shot route requested by [local.oss.chronicle.application.MainActivity]
  * from a notification tap or a "play audiobook X" launch intent (its `handleNotificationIntent`).
@@ -75,6 +80,31 @@ fun ChronicleWearApp(
                 if (pendingRoute != null) {
                     navController.navigate(pendingRoute)
                     onPendingRouteConsumed()
+                }
+            }
+
+            // Login-state-driven auto-navigation (PLAN.md 5.3): PlexLoginRepo transitions
+            // LOGGED_IN_NO_USER_CHOSEN -> NO_SERVER_CHOSEN -> NO_LIBRARY_CHOSEN, i.e. user, then
+            // server, then library. popUpTo(...) { inclusive = true } replicates the old
+            // Navigator.clearBackStack() so the back gesture never returns to a login step the
+            // user has already completed.
+            val plexLoginRepo = remember { Injector.get().plexLoginRepo() }
+            val loginEvent by plexLoginRepo.loginEvent.observeAsState()
+            LaunchedEffect(loginEvent) {
+                val loginState = loginEvent?.getContentIfNotHandled() ?: return@LaunchedEffect
+                val route =
+                    when (loginState) {
+                        IPlexLoginRepo.LoginState.NOT_LOGGED_IN,
+                        IPlexLoginRepo.LoginState.FAILED_TO_LOG_IN,
+                        IPlexLoginRepo.LoginState.AWAITING_LOGIN_RESULTS,
+                        -> Nav.LINK_ACCOUNT
+                        IPlexLoginRepo.LoginState.LOGGED_IN_NO_USER_CHOSEN -> Nav.CHOOSE_USER
+                        IPlexLoginRepo.LoginState.LOGGED_IN_NO_SERVER_CHOSEN -> Nav.CHOOSE_SERVER
+                        IPlexLoginRepo.LoginState.LOGGED_IN_NO_LIBRARY_CHOSEN -> Nav.CHOOSE_LIBRARY
+                        IPlexLoginRepo.LoginState.LOGGED_IN_FULLY -> Nav.LIBRARY
+                    }
+                navController.navigate(route) {
+                    popUpTo(navController.graph.id) { inclusive = true }
                 }
             }
 
