@@ -297,7 +297,9 @@ class NotificationBuilder
             OngoingActivity.Builder(context, NOW_PLAYING_NOTIFICATION, configuredBuilder)
                 .setStaticIcon(R.drawable.ic_notification_icon_playing)
                 .setTouchIntent(contentPendingIntent)
-                .setStatus(Status.Builder().addTemplate(chapterTitle).build())
+                // titles.first already falls back to the book title when there is no chapter
+                // data yet, which avoids a blank ongoing-activity status on the first build.
+                .setStatus(Status.Builder().addTemplate(titles.first).build())
                 .build()
                 .apply(context)
 

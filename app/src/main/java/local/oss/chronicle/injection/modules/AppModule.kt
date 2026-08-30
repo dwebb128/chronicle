@@ -132,7 +132,7 @@ class AppModule(private val app: Application) {
         @Named(OKHTTP_CLIENT_MEDIA) okHttpClient: OkHttpClient,
     ): FetchConfiguration =
         FetchConfiguration.Builder(appContext)
-            .setDownloadConcurrentLimit(3)
+            .setDownloadConcurrentLimit(1)
             .createDownloadFileOnEnqueue(false)
             .enableAutoStart(false)
             .setAutoRetryMaxAttempts(1)

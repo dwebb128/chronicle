@@ -146,7 +146,7 @@ class AudiobookMediaSessionCallback
                 else -> {
                     onSetPlaybackError(
                         android.support.v4.media.session.PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                        "Please open Chronicle app on the phone to complete setup",
+                        "Open Chronicle to finish setup",
                     )
                     false
                 }
@@ -247,7 +247,7 @@ class AudiobookMediaSessionCallback
                 }
                 LOGGED_IN_FULLY -> true
                 else -> {
-                    val errorMessage = "Please open Chronicle app on the phone to complete setup"
+                    val errorMessage = "Open Chronicle to finish setup"
                     if (shouldPlayBridgeAudio) {
                         // Speak FIRST, then set error state AFTER TTS completes
                         voiceCommandBridgeAudio.speakErrorMessage(errorMessage) {
