@@ -40,8 +40,27 @@ Low priority
     
 ## High priority:
 
- - [X] Android Auto (feature flagged, but should be functional)
- - [ ] Casting
+ - [X] Android Auto (feature flagged, but should be functional) — **removed** as part of the Wear OS conversion; not applicable to a watch-only app
+ - [ ] ~~Casting~~ **no longer planned** — Cast support was removed as part of the Wear OS conversion (`media3-cast` dependency dropped)
+
+## Wear OS conversion
+
+Follow-ups surfaced by the phone-to-Wear-OS conversion (see `docs/architecture/wear-platform.md`,
+`docs/features/wear-ui.md`, `docs/features/plex-link-login.md`). Nothing in this codebase could be
+compiled during the conversion (no Android SDK, Google Maven blocked), so all of the following need
+verification on a real build/device before release:
+
+ - [ ] Verify every newly-pinned dependency version (Wear Compose 1.4.0, Compose UI 1.7.6, Coil
+       2.7.0, wear-ongoing 1.0.0, etc.) against what actually resolves on the first real build
+ - [ ] Verify the Plex `pins.json` plain-pin (non-`strong`) short code assumption against the live
+       Plex API — `postLinkPin()` has never been exercised against a real server
+ - [ ] QR-code login as a follow-up to the plex.tv/link short-code flow (better UX, avoids typing
+       a code on another device)
+ - [ ] Ambient / always-on display support (explicitly out of scope for the initial conversion)
+ - [ ] A Tile and/or complication for resuming the current audiobook (out of scope for the initial
+       conversion)
+ - [ ] Validate Fetch (the download library) actually works correctly on Wear OS — never
+       previously tested on a watch
 
 ## Medium priority:
 
@@ -63,7 +82,6 @@ Low priority
             bottom-nav tab even when empty (one-line change + empty-state screen), or (b) add a
             "Collections" carousel to the Home screen similar to "Recently Listened".
  - [ ] Add more narrator to audiobook page: narrator
- - [ ] Better tablet/landscape support
  - [ ] Next/previous chapter buttons in "currently playing" screen?
     - [ ] At least look into improving UI for this
  - [ ] Show most recently listened book on login in bottom bar like Spotify does

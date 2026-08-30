@@ -1,5 +1,7 @@
 # Chapter System
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's chapter system, including chapter data flow, detection algorithm, track-to-chapter mapping, and navigation implementation.
 
 ## Overview

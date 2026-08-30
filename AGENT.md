@@ -4,11 +4,19 @@ This document helps AI agents understand and work effectively with the Chronicle
 
 ## 1. Project Overview
 
-Chronicle Epilogue is an Android audiobook player that integrates with Plex Media Server. It allows users to stream and download audiobooks hosted on their Plex server, with features like adjustable playback speed, sleep timer, chapter navigation, and offline playback.
+Chronicle Epilogue is a **standalone Wear OS audiobook player** (Wear OS 6 / API 36, built with
+Pixel Watch 4 in mind) that integrates with Plex Media Server. It allows users to stream and
+download audiobooks hosted on their Plex server, right on the watch, with features like adjustable
+playback speed, sleep timer, chapter navigation, and offline playback.
+
+The app was converted in-place from an earlier Android phone app; there is no phone app or
+separate `:wear` module — `:app` **is** the Wear OS app. See
+[`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) for platform specifics
+and [`docs/features/wear-ui.md`](docs/features/wear-ui.md) for the screen set.
 
 **Key Details:**
 - **Language:** Kotlin
-- **Platform:** Android (min SDK 26, target SDK 34)
+- **Platform:** Wear OS (minSdk 34, targetSdk 36, compileSdk 36)
 - **Build System:** Gradle with Kotlin DSL
 - **License:** GPLv3 (code) + All Rights Reserved (branding assets)
 
@@ -18,29 +26,32 @@ For complete project information, see [`README.md`](README.md).
 
 Chronicle follows a **layered MVVM architecture** with clear separation of concerns:
 
-- **Presentation Layer:** Fragments + ViewModels (per feature)
+- **Presentation Layer:** Compose for Wear OS (`ui/screens/`, `ui/components/`, `ui/theme/`) + ViewModels (per feature). One Activity (`MainActivity`, a `ComponentActivity`) hosts a single `SwipeDismissableNavHost`; there are no Fragments and no Data Binding.
 - **Domain Layer:** Business logic in repositories and use cases
 - **Data Layer:** Room databases + Plex API integration
 - **Service Layer:** [`MediaPlayerService`](app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt) with ExoPlayer for background audio playback
 
 ### Key Architectural Patterns
 
-1. **MVVM (Model-View-ViewModel):** Each feature module uses this pattern with AndroidX Lifecycle components
+1. **MVVM (Model-View-ViewModel):** Each feature module uses this pattern; Compose screens read ViewModel `LiveData` via `observeAsState()`
 2. **Repository Pattern:** Single source of truth combining local (Room) and remote (Plex API) data
 3. **MediaBrowserService:** For background audio playback and media controls via Media3
 4. **Dependency Injection:** Dagger 2 with 3-component hierarchy:
    - [`AppComponent`](app/src/main/java/local/oss/chronicle/injection/components/AppComponent.kt) (@Singleton) - Application-wide dependencies
-   - [`ActivityComponent`](app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt) (@ActivityScope) - Activity-scoped dependencies  
+   - [`ActivityComponent`](app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt) (@ActivityScope) - Activity-scoped dependencies, provided to Compose via `LocalActivityComponent` (a `staticCompositionLocalOf`)
    - [`ServiceComponent`](app/src/main/java/local/oss/chronicle/injection/components/ServiceComponent.kt) (@ServiceScope) - MediaPlayerService dependencies
 
 **For detailed architecture diagrams and patterns, see:**
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - Main architecture overview and index
+- [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) - Wear OS platform specifics (rotary input, Ongoing Activity, storage constraints, etc.)
 - [`docs/architecture/layers.md`](docs/architecture/layers.md) - Detailed layer architecture
-- [`docs/architecture/dependency-injection.md`](docs/architecture/dependency-injection.md) - Dagger 2 DI setup
-- [`docs/architecture/patterns.md`](docs/architecture/patterns.md) - Architectural patterns
-- [`docs/architecture/plex-integration.md`](docs/architecture/plex-integration.md) - Plex-specific implementation
+- [`docs/architecture/dependency-injection.md`](docs/architecture/dependency-injection.md) - Dagger 2 DI setup (STALE — predates the Wear conversion; component shape is unchanged but see `wear-platform.md`/`wear-ui.md` for current usage)
+- [`docs/architecture/patterns.md`](docs/architecture/patterns.md) - Architectural patterns (STALE — phone-era)
+- [`docs/architecture/plex-integration.md`](docs/architecture/plex-integration.md) - Plex-specific implementation (STALE — phone-era)
 - [`docs/DATA_LAYER.md`](docs/DATA_LAYER.md) - Database and repository patterns
 - [`docs/FEATURES.md`](docs/FEATURES.md) - Feature-specific architecture
+- [`docs/features/wear-ui.md`](docs/features/wear-ui.md) - The ten Wear OS screens, nav routes, and components
+- [`docs/features/plex-link-login.md`](docs/features/plex-link-login.md) - The plex.tv/link sign-in flow
 
 ## 3. Code Structure
 
@@ -50,20 +61,19 @@ The codebase is organized by feature and layer:
 app/src/main/java/local/oss/chronicle/
 ├── application/              # App initialization, MainActivity, DI Injector
 │   ├── ChronicleApplication.kt
-│   ├── MainActivity.kt
+│   ├── MainActivity.kt         # Single Activity; setContent { ChronicleWearApp(...) }
+│   ├── MainActivityViewModel.kt
 │   ├── Injector.kt
 │   └── Constants.kt
 │
 ├── data/
 │   ├── local/               # Room databases, DAOs, Repositories
-│   │   ├── BookDatabase.kt
-│   │   ├── BookRepository.kt
-│   │   ├── ChapterDatabase.kt
-│   │   ├── ChapterRepository.kt
-│   │   ├── CollectionsDatabase.kt
-│   │   ├── CollectionsRepository.kt
-│   │   ├── TrackDatabase.kt
-│   │   ├── TrackRepository.kt
+│   │   ├── AccountDatabase.kt / AccountRepository.kt
+│   │   ├── BookDatabase.kt / BookRepository.kt
+│   │   ├── ChapterDatabase.kt / ChapterRepository.kt
+│   │   ├── CollectionsDatabase.kt / CollectionsRepository.kt
+│   │   ├── LibraryRepository.kt
+│   │   ├── TrackDatabase.kt / TrackRepository.kt
 │   │   └── LibrarySyncRepository.kt
 │   │
 │   ├── model/               # Domain models (data classes)
@@ -75,58 +85,68 @@ app/src/main/java/local/oss/chronicle/
 │   │
 │   └── sources/
 │       ├── plex/            # Plex API integration (Retrofit + OkHttp)
-│       │   ├── PlexService.kt
+│       │   ├── PlexService.kt      # incl. postLinkPin() for the Wear login flow
 │       │   ├── PlexMediaSource.kt
 │       │   ├── PlexMediaRepository.kt
 │       │   ├── PlexLoginRepo.kt
 │       │   ├── PlexConfig.kt
 │       │   ├── PlexInterceptor.kt
 │       │   ├── PlaybackUrlResolver.kt
+│       │   ├── CachedFileManager.kt   # download cache; storage free-space guard lives here
 │       │   └── model/       # Plex-specific models (Moshi JSON)
 │       └── local/           # Local media source
 │
-├── features/                # Feature modules (UI + ViewModels)
-│   ├── account/            # Account and library management
-│   │   ├── AccountListFragment.kt
-│   │   ├── AccountListViewModel.kt
-│   │   ├── AccountListAdapter.kt
-│   │   ├── AccountWithLibraries.kt
-│   │   ├── AccountManager.kt
-│   │   ├── ActiveLibraryProvider.kt
-│   │   ├── CredentialManager.kt
-│   │   ├── LegacyAccountMigration.kt
-│   │   ├── LibrarySelectorBottomSheet.kt
-│   │   └── LibrarySelectorAdapter.kt
-│   ├── login/              # OAuth, server/user/library selection
-│   ├── home/               # Recently listened, recently added
-│   ├── library/            # Full audiobook library with search
-│   ├── bookdetails/        # Audiobook details, chapters
-│   ├── collections/        # Plex collections browsing
-│   ├── currentlyplaying/   # Full-screen player UI
-│   ├── player/             # MediaPlayerService, ExoPlayer (Media3)
-│   ├── search/             # Search functionality
-│   ├── settings/           # App preferences
+├── features/                # Feature modules (ViewModels; UI lives in ui/ — see below)
+│   ├── account/            # Account/library data layer (kept) — NOT a UI: AccountManager,
+│   │                       # CredentialManager, ActiveLibraryProvider, LegacyAccountMigration
+│   ├── auth/               # plex.tv/link state machine: PlexAuthCoordinator, PlexAuthState
+│   ├── login/              # ViewModels for user/server/library selection (LoginViewModel,
+│   │                       # ChooseUserViewModel, ChooseServerViewModel, ChooseLibraryViewModel)
+│   ├── library/            # LibraryViewModel
+│   ├── bookdetails/        # AudiobookDetailsViewModel
+│   ├── currentlyplaying/   # CurrentlyPlayingViewModel — now playing, speed, sleep timer
+│   ├── player/             # MediaPlayerService, ExoPlayer (Media3), AudioOutputMonitor
+│   ├── settings/           # SettingsViewModel (rewritten for Wear — see docs/features/wear-ui.md)
 │   └── download/           # Download management (Fetch library)
+│
+├── ui/                     # Compose for Wear OS presentation layer
+│   ├── ChronicleWearApp.kt    # Root composable: Scaffold + SwipeDismissableNavHost
+│   ├── Nav.kt                 # Route constants
+│   ├── RotaryScroll.kt         # rotaryScrollable() modifier
+│   ├── theme/Theme.kt
+│   ├── components/            # BookRow, ChapterRow, LoadingScreen, ErrorScreen,
+│   │                          # NowPlayingChip, OptionsDialog
+│   └── screens/                # LinkAccountScreen, ChooseUserScreen, ChooseServerScreen,
+│                                # ChooseLibraryScreen, LibraryScreen, BookDetailsScreen,
+│                                # NowPlayingScreen, PlaybackSpeedScreen, SleepTimerScreen,
+│                                # SettingsScreen — see docs/features/wear-ui.md
 │
 ├── injection/              # Dagger 2 DI setup
 │   ├── components/         # AppComponent, ActivityComponent, ServiceComponent
 │   ├── modules/            # AppModule, ActivityModule, ServiceModule
 │   └── scopes/             # Custom scopes (@ActivityScope, @ServiceScope)
 │
-├── navigation/             # Navigation utilities (Jetpack Navigation)
-│   └── Navigator.kt
-│
-├── util/                   # Extension functions, utilities
-│   ├── ErrorHandling.kt        # ChronicleError sealed class for structured errors
-│   ├── RetryHandler.kt         # withRetry() with exponential backoff
-│   ├── NetworkMonitor.kt       # Real-time network connectivity monitoring
-│   └── ScopedCoroutines.kt     # Lifecycle-aware coroutine management
-│
-└── views/                  # Custom views, binding adapters (Data Binding)
-    ├── BindingAdapters.kt
-    ├── ChronicleDraweeView.kt  # Fresco image view
-    └── ModalBottomSheetSpeedChooser.kt
+└── util/                   # Extension functions, utilities
+    ├── ErrorHandling.kt        # ChronicleError sealed class for structured errors
+    ├── RetryHandler.kt         # withRetry() with exponential backoff
+    ├── NetworkMonitor.kt       # Real-time network connectivity monitoring
+    ├── StorageUtils.kt         # bytesAvailable() — wired into the download free-space guard
+    └── ScopedCoroutineManager.kt  # Lifecycle-aware coroutine management
 ```
+
+There is no `navigation/` package (the phone app's `Navigator.kt` was deleted — Compose screens
+navigate via `NavHostController` lambdas instead) and no `views/` package (Data Binding is gone;
+`views/BottomSheetChooser.kt`'s data types moved to `ui/components/OptionsDialog.kt`). Fragments,
+RecyclerView adapters, and `*BindingAdapters.kt` files are gone from every feature package above
+except three known leftovers — see the note at the end of this section.
+
+> **Known leftover dead code:** `features/login/{ChooseUserFragment,ChooseServerFragment,
+> ChooseLibraryFragment}.kt` were not deleted during the Compose conversion, even though
+> `ui/screens/{ChooseUserScreen,ChooseServerScreen,ChooseLibraryScreen}.kt` fully replace them.
+> All three still import generated Data Binding classes
+> (e.g. `local.oss.chronicle.databinding.OnboardingPlexChooseUserBinding`) that no longer exist
+> now that `dataBinding = false` and `res/layout/` is deleted — **these three files need deleting**
+> before the module can compile.
 
 ## 4. Development Commands
 
@@ -255,7 +275,7 @@ Uses **[Fetch library](https://github.com/tonyofrancis/Fetch)** for downloads:
 - **Progress reporting worker** - [`PlexSyncScrobbleWorker`](app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) is now a `CoroutineWorker` (not `Worker`) for proper async handling
 - **Play queue item IDs** from `POST /playQueues` responses are cached in-memory and included in timeline updates for Plex dashboard visibility
 - **Media sessions** must be properly released to avoid memory leaks
-- **Data Binding** is used throughout for UI binding - see binding adapters in [`views/`](app/src/main/java/local/oss/chronicle/views/) and feature packages
+- **Compose for Wear OS** is the entire presentation layer (`androidx.wear.compose.material`/`.foundation`/`.navigation`); there is no Data Binding, no XML layouts, and no RecyclerView adapters
 
 ### 6.7 Multi-Account System
 
@@ -278,8 +298,8 @@ Chronicle displays all libraries together in a unified view:
 - [`LibrarySyncRepository.refreshLibrary()`](app/src/main/java/local/oss/chronicle/data/local/LibrarySyncRepository.kt) syncs ALL libraries sequentially
 - [`PlexSyncScrobbleWorker`](app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) uses `audiobook.libraryId` for contextual API calls to the correct server
 - ViewModels query all books without library filtering - unified data access
-- Library switching UI has been removed - users add/remove accounts via Settings → Manage Accounts
-- Home, Library, Collections, and Search screens aggregate content from all libraries
+- The Wear OS `LibraryScreen` is the sole browsing surface (there is no separate Home/Collections/Search screen — see [`docs/features/wear-ui.md`](docs/features/wear-ui.md) for the current screen set and what was cut)
+- **No on-watch account/user switching UI.** `AccountManager`/`AccountRepository`/`CredentialManager` remain as the data layer backing multi-account/multi-library storage (still wired into `PlexLoginRepo`), but the phone app's account-list/library-selector screens are gone; on Wear, whichever Plex user the plex.tv/link flow resolves to is what you get, and changing accounts means re-running the link flow from Settings → Log out
 
 #### Library-Aware Playback
 
@@ -300,11 +320,16 @@ See [`docs/architecture/library-aware-playback.md`](docs/architecture/library-aw
 
 ### Architecture & Design
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - Main architecture overview and index
+- [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) - Wear OS platform specifics: rotary input, Ongoing Activity, `AudioOutputMonitor`, storage constraints, what's out of scope
 - [`docs/architecture/layers.md`](docs/architecture/layers.md) - Detailed layer architecture (Presentation, Domain, Data)
-- [`docs/architecture/dependency-injection.md`](docs/architecture/dependency-injection.md) - Dagger 2 DI component hierarchy and modules
-- [`docs/architecture/patterns.md`](docs/architecture/patterns.md) - Architectural patterns (Repository, MVVM, State Machines, etc.)
-- [`docs/architecture/plex-integration.md`](docs/architecture/plex-integration.md) - Plex API integration details (client profile, headers, OAuth)
+- [`docs/architecture/dependency-injection.md`](docs/architecture/dependency-injection.md) - Dagger 2 DI component hierarchy and modules (STALE — phone-era; component *shape* is unchanged)
+- [`docs/architecture/patterns.md`](docs/architecture/patterns.md) - Architectural patterns (Repository, MVVM, State Machines, etc.) (STALE — phone-era)
+- [`docs/architecture/plex-integration.md`](docs/architecture/plex-integration.md) - Plex API integration details (client profile, headers, OAuth) (STALE — phone-era)
 - [`docs/architecture/library-aware-playback.md`](docs/architecture/library-aware-playback.md) - Multi-library server resolution for playback
+- [`docs/architecture/progress-reporting-overhaul.md`](docs/architecture/progress-reporting-overhaul.md) - Thread-safe, library-aware progress reporting (`PlexProgressReporter`)
+- [`docs/architecture/scoped-plex-service-factory.md`](docs/architecture/scoped-plex-service-factory.md) - Per-library request-scoped Retrofit/Plex service construction
+- [`docs/architecture/lazy-token-injection.md`](docs/architecture/lazy-token-injection.md) - ExoPlayer HTTP DataSource lazy token injection pattern
+- [`docs/architecture/plex-dashboard-activity.md`](docs/architecture/plex-dashboard-activity.md) - Plex "now playing" dashboard visibility (play queue item cache)
 
 ### Data Layer
 - [`docs/DATA_LAYER.md`](docs/DATA_LAYER.md) - Database and repository patterns
@@ -315,13 +340,15 @@ See [`docs/architecture/library-aware-playback.md`](docs/architecture/library-aw
 
 ### Features
 - [`docs/FEATURES.md`](docs/FEATURES.md) - Feature documentation index
-- [`docs/features/login.md`](docs/features/login.md) - Login/OAuth flow documentation
-- [`docs/features/library.md`](docs/features/library.md) - Library browsing documentation
-- [`docs/features/playback.md`](docs/features/playback.md) - Media playback documentation
-- [`docs/features/downloads.md`](docs/features/downloads.md) - Download management documentation
-- [`docs/features/android-auto.md`](docs/features/android-auto.md) - Android Auto integration documentation
-- [`docs/features/settings.md`](docs/features/settings.md) - Settings/preferences documentation
-- [`docs/features/account-ui-design.md`](docs/features/account-ui-design.md) - Multi-account UI design
+- [`docs/features/wear-ui.md`](docs/features/wear-ui.md) - The ten Wear OS screens, nav routes, and Wear Compose components behind each
+- [`docs/features/plex-link-login.md`](docs/features/plex-link-login.md) - The plex.tv/link short-code sign-in flow
+- [`docs/features/login.md`](docs/features/login.md) - User/server/library selection state machine (STALE — phone-era UI, but the underlying `IPlexLoginRepo` state machine is unchanged)
+- [`docs/features/library.md`](docs/features/library.md) - Library browsing documentation (STALE — phone-era)
+- [`docs/features/playback.md`](docs/features/playback.md) - Media playback documentation (STALE — phone-era UI, player internals mostly unchanged)
+- [`docs/features/chapters.md`](docs/features/chapters.md) - Chapter data flow, detection algorithm, navigation (STALE — phone-era UI, detection logic unchanged)
+- [`docs/features/downloads.md`](docs/features/downloads.md) - Download management documentation (STALE — phone-era; see `wear-platform.md` for the Wear-specific storage guard)
+- [`docs/features/settings.md`](docs/features/settings.md) - Settings/preferences documentation (STALE — phone-era; see `wear-ui.md` for the rewritten Wear settings screen)
+- [`docs/features/debug-easter-egg.md`](docs/features/debug-easter-egg.md) - (STALE — the debug-info dialog this describes was cut entirely in the Wear conversion)
 
 ### API Integration
 - [`docs/API_FLOWS.md`](docs/API_FLOWS.md) - Plex API integration details
@@ -331,9 +358,10 @@ See [`docs/architecture/library-aware-playback.md`](docs/architecture/library-aw
   - Error handling
 
 ### Specific Topics
-- [`docs/PLEX_LOGIN_AUTO_CLOSE.md`](docs/PLEX_LOGIN_AUTO_CLOSE.md) - OAuth popup auto-close implementation
 - [`docs/example-query-responses/`](docs/example-query-responses/) - Real API response examples
+  - [`README.md`](docs/example-query-responses/README.md) - Index of captured responses
   - [`oauth-flow.md`](docs/example-query-responses/oauth-flow.md) - OAuth flow examples
+  - [`query-providers.md`](docs/example-query-responses/query-providers.md) - Provider/server query examples
   - [`request-album-info.md`](docs/example-query-responses/request-album-info.md) - Album/audiobook metadata
   - [`request_track_info.md`](docs/example-query-responses/request_track_info.md) - Track information
   - [`request-collections-info.md`](docs/example-query-responses/request-collections-info.md) - Collections data
@@ -349,31 +377,58 @@ See [`docs/architecture/library-aware-playback.md`](docs/architecture/library-aw
 
 ### 8.1 Adding a New Feature
 
-**Technology:** Kotlin, MVVM with AndroidX Lifecycle, Jetpack Navigation, Data Binding, Dagger 2
+**Technology:** Kotlin, MVVM with AndroidX Lifecycle, Compose for Wear OS, Dagger 2
 
 **General Strategy:**
-Start by understanding the feature scope and user requirements. Research the existing codebase for similar patterns to maintain consistency. Design the data model and any required API changes first before touching UI code. Implement in layers following the architecture: data layer (models, DAOs, API calls) → domain/repository layer (business logic) → presentation layer (Fragment, ViewModel, layouts). Write tests alongside implementation to validate behavior as you build. Document the feature in [`docs/`](docs/) when complete, including architecture diagrams for complex flows.
+Start by understanding the feature scope and user requirements — and whether it makes sense on a
+watch-sized screen at all (see the cut-features list in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+for what was deliberately left out of this form factor). Research the existing codebase for
+similar patterns to maintain consistency — [`ui/screens/LibraryScreen.kt`](app/src/main/java/local/oss/chronicle/ui/screens/LibraryScreen.kt)
+is a good reference for a simple list screen. Design the data model and any required API changes
+first before touching UI code. Implement in layers following the architecture: data layer (models,
+DAOs, API calls) → domain/repository layer (business logic) → presentation layer (Composable
+screen + ViewModel). Write tests alongside implementation to validate behavior as you build.
+Document the feature in [`docs/`](docs/) when complete, including architecture diagrams for
+complex flows.
 
-1. **Create feature package** in [`features/`](app/src/main/java/local/oss/chronicle/features/)
-   - Structure: Fragment + ViewModel + Adapter (for RecyclerView) + BindingAdapters (for Data Binding)
-   - Reference example: [`features/library/`](app/src/main/java/local/oss/chronicle/features/library/)
+1. **Create feature ViewModel** in [`features/`](app/src/main/java/local/oss/chronicle/features/)
+   - Structure: a `ViewModel` + its `Factory`, exposing state as `LiveData` (this codebase does
+     not use `StateFlow` for ViewModel-exposed state — see `docs/ARCHITECTURE.md` D9)
+   - Reference example: [`features/library/LibraryViewModel.kt`](app/src/main/java/local/oss/chronicle/features/library/LibraryViewModel.kt)
 
-2. **Create layout** in `app/src/main/res/layout/` using Android Data Binding
+2. **Create the screen composable** in [`ui/screens/`](app/src/main/java/local/oss/chronicle/ui/screens/)
+   - Read the ViewModel's `LiveData` with `observeAsState()`
+   - Wrap list content in `androidx.wear.compose.foundation.lazy.ScalingLazyColumn` (not
+     `compose-material` — see [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md)),
+     with `Modifier.rotaryScrollable(listState)` and a `PositionIndicator`
+   - Reuse [`ui/components/`](app/src/main/java/local/oss/chronicle/ui/components/) (`LoadingScreen`,
+     `ErrorScreen`, `OptionsDialog`, etc.) rather than duplicating their patterns
 
-3. **Add navigation destination** in `app/src/main/res/navigation/nav_graph.xml` (Jetpack Navigation)
+3. **Add a navigation destination** in [`ui/Nav.kt`](app/src/main/java/local/oss/chronicle/ui/Nav.kt)
+   (a route constant) and register it with `composable(...)` in
+   [`ui/ChronicleWearApp.kt`](app/src/main/java/local/oss/chronicle/ui/ChronicleWearApp.kt)'s
+   `SwipeDismissableNavHost`
 
 4. **Setup dependency injection:**
-   - Add injection method to [`ActivityComponent`](app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt)
-   - Inject in Fragment's `onAttach()` - see [`SettingsFragment`](app/src/main/java/local/oss/chronicle/features/settings/SettingsFragment.kt) for pattern
+   - Add an injection accessor (typically a ViewModel `Factory` provider) to
+     [`ActivityComponent`](app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt)
+     if the ViewModel needs Activity-scoped dependencies, or construct the `Factory` directly from
+     [`Injector`](app/src/main/java/local/oss/chronicle/application/Injector.kt) if all its
+     dependencies are already `AppComponent`-scoped singletons (see `LibraryScreen` for that
+     pattern)
+   - Obtain the factory in the composable via `LocalActivityComponent.current` and
+     `androidx.lifecycle.viewmodel.compose.viewModel(factory = ...)`
 
 5. **Follow MVVM pattern:**
-   - Fragment: UI rendering only
-   - ViewModel: State management with LiveData or Flow
-   - Repository: Data access abstraction
+   - Composable screen: rendering only, no business logic
+   - ViewModel: state management with `LiveData`, navigation via lambdas passed down from
+     `ChronicleWearApp` (ViewModels never navigate directly)
+   - Repository: data access abstraction
 
 6. **Document:**
    - Architecture: update corresponding documentation, split to new file if necessary for readability
-   - Feature: describe the feature in a dedicated file in [`docs/features/`](docs/features/)
+   - Feature: describe the feature in [`docs/features/wear-ui.md`](docs/features/wear-ui.md) (or a
+     new dedicated file in [`docs/features/`](docs/features/) if it's substantial enough)
    - Tests: ensure unit tests have been written and run successfully
 
 ### 8.2 Modifying Plex API Calls
@@ -443,7 +498,7 @@ Test-driven development is encouraged - write tests before or during implementat
 **Technology:** Gradle Kotlin DSL
 
 **General Strategy:**
-Evaluate necessity first - prefer using existing solutions already in the project over adding new dependencies. Check license compatibility with GPLv3 to ensure legal compliance. Consider impact on app size (APK bloat) and method count. Verify Android compatibility and that it supports the project's minimum SDK (26). Research the library's maintenance status, community support, and security track record before adding.
+Evaluate necessity first - prefer using existing solutions already in the project over adding new dependencies. Check license compatibility with GPLv3 to ensure legal compliance. Consider impact on app size (APK bloat) and method count. Verify Android/Wear OS compatibility and that it supports the project's minimum SDK (34). Research the library's maintenance status, community support, and security track record before adding.
 
 1. **Edit** [`app/build.gradle.kts`](app/build.gradle.kts) in the `dependencies` block
 
@@ -543,5 +598,5 @@ For reported and confirmed bugs a test recreating the scenario is required. The 
 
 ---
 
-**Last Updated:** 2026-02-25
+**Last Updated:** 2026-08-30
 **Project Version:** Check [`CHANGELOG.md`](CHANGELOG.md) for current version

@@ -246,6 +246,17 @@ app/src/main/play/listings/en-US/graphics/
     └── ...
 ```
 
+> **Wear OS note:** since the Wear OS conversion, this app targets watches, not phones. Play
+> Console lists Wear OS as a separate device form factor from phone/tablet, and a Wear OS listing
+> needs its own watch-format screenshots (Play Console currently asks for square or round images
+> sized for a watch display, uploaded under that form factor's own listing section rather than
+> under `phone-screenshots/`). The `phone-screenshots/` directory and layout above is left as-is
+> here because the exact Gradle Play Publisher directory convention for a Wear OS form factor
+> (e.g. whether it expects a sibling `wear-screenshots/` directory, a differently-named directory,
+> or per-form-factor listing configuration in `build.gradle.kts`) has not been verified against the
+> plugin's current documentation or source — confirm this before the first Wear OS Play Store
+> submission.
+
 ### Publish Metadata Changes
 
 ```bash

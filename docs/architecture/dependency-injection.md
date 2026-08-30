@@ -1,5 +1,7 @@
 # Dependency Injection
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 Chronicle uses **Dagger 2** for dependency injection with a hierarchical component structure that provides appropriate scoping for different parts of the application.
 
 For a high-level overview, see the [Architecture Overview](../ARCHITECTURE.md).
