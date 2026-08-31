@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -76,9 +78,16 @@ fun ChronicleWearApp(
         ) {
             val navController = rememberSwipeDismissableNavController()
 
+            // MainActivity calls determineLoginState() on every cold start, so a LOGGED_IN_FULLY
+            // event lands just after this effect has already honoured a notification tap. Without
+            // this flag its popUpTo(inclusive = true) would discard the deep-link destination and
+            // drop the listener on the plain library list instead.
+            var deepLinkNavigated by remember { mutableStateOf(false) }
+
             LaunchedEffect(pendingRoute) {
                 if (pendingRoute != null) {
                     navController.navigate(pendingRoute)
+                    deepLinkNavigated = true
                     onPendingRouteConsumed()
                 }
             }
@@ -103,6 +112,9 @@ fun ChronicleWearApp(
                         IPlexLoginRepo.LoginState.LOGGED_IN_NO_LIBRARY_CHOSEN -> Nav.CHOOSE_LIBRARY
                         IPlexLoginRepo.LoginState.LOGGED_IN_FULLY -> Nav.LIBRARY
                     }
+                // LOGGED_IN_FULLY is the only state a deep link can outrank: every other one
+                // means the requested screen cannot be shown yet, so the login redirect wins.
+                if (route == Nav.LIBRARY && deepLinkNavigated) return@LaunchedEffect
                 navController.navigate(route) {
                     popUpTo(navController.graph.id) { inclusive = true }
                 }

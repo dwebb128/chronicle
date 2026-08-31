@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.StrictMode
 import android.os.StrictMode.VmPolicy
 import coil.ImageLoader
+import coil.ImageLoaderFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import local.oss.chronicle.BuildConfig
@@ -29,7 +30,7 @@ import javax.inject.Singleton
 // a singleton
 @Suppress("LeakingThis")
 @Singleton
-open class ChronicleApplication : Application() {
+open class ChronicleApplication : Application(), ImageLoaderFactory {
     // Instance of the AppComponent that will be used by all the Activities in the project
     val appComponent by lazy {
         initializeComponent()
@@ -331,6 +332,16 @@ open class ChronicleApplication : Application() {
     private fun connectToServer() {
         plexConfig.connectToServer(plexMediaService)
     }
+
+    /**
+     * Coil resolves every `AsyncImage` that is not handed an explicit loader through this factory.
+     * Returning the injected instance is what makes the Compose screens share the media
+     * [okhttp3.OkHttpClient] — and with it the Plex auth interceptor, connection pool and disk
+     * cache — with the notification and media-session artwork loaded via [PlexConfig]. Read off
+     * [appComponent] rather than the injected field so a very early image request cannot touch an
+     * uninitialised `lateinit`.
+     */
+    override fun newImageLoader(): ImageLoader = appComponent.imageLoader()
 
     override fun onTrimMemory(level: Int) {
         imageLoader.memoryCache?.clear()
