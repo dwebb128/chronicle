@@ -13,6 +13,7 @@ import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.IChapterRepository
 import local.oss.chronicle.data.local.ITrackRepository
 import local.oss.chronicle.data.local.LibraryDao
+import local.oss.chronicle.data.local.LibraryRepository
 import local.oss.chronicle.data.local.LibrarySyncRepository
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
@@ -20,6 +21,7 @@ import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
 import local.oss.chronicle.data.sources.plex.ConnectionRefreshCoordinator
 import local.oss.chronicle.data.sources.plex.PlaybackUrlResolver
 import local.oss.chronicle.data.sources.plex.PlexConfig
+import local.oss.chronicle.data.sources.plex.PlexLoginService
 import local.oss.chronicle.data.sources.plex.PlexMediaService
 import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import local.oss.chronicle.data.sources.plex.PlexProgressReporter
@@ -61,6 +63,8 @@ interface CoreComponent {
 
     fun plexMediaService(): PlexMediaService
 
+    fun plexLoginService(): PlexLoginService
+
     fun fetch(): Fetch
 
     fun imageLoader(): ImageLoader
@@ -89,6 +93,8 @@ interface CoreComponent {
     fun chapterDao(): ChapterDao
 
     fun libraryDao(): LibraryDao
+
+    fun libraryRepository(): LibraryRepository
 
     fun chapterRepo(): IChapterRepository
 

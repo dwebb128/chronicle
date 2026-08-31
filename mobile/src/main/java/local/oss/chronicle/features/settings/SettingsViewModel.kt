@@ -6,7 +6,6 @@ import androidx.lifecycle.*
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.facebook.drawee.backends.pipeline.Fresco
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -138,9 +137,6 @@ class SettingsViewModel(
         )
     }
 
-    private var _upgradeToPremium = MutableLiveData<Event<Unit>>()
-    val upgradeToPremium: LiveData<Event<Unit>>
-        get() = _upgradeToPremium
 
     private var _showDebugDialog = MutableLiveData<Event<Unit>>()
     val showDebugDialog: LiveData<Event<Unit>>
@@ -162,48 +158,24 @@ class SettingsViewModel(
         prefsRepo.unregisterPrefsListener(prefsListener)
     }
 
-    fun startUpgradeToPremiumFlow() {
-        _upgradeToPremium.postEvent(Unit)
-    }
-
     private fun makePreferences(): List<PreferenceModel> {
         val list =
             mutableListOf(
                 PreferenceModel(
                     PreferenceType.TITLE,
-                    FormattableString.from(R.string.settings_premium_upgrade_label),
+                    FormattableString.from(R.string.settings_support_label),
                 ),
-                if (prefsRepo.isPremium) {
-                    PreferenceModel(
-                        type = PreferenceType.CLICKABLE,
-                        title = FormattableString.from(R.string.settings_premium_unlocked_title),
-                        explanation =
-                            FormattableString.from(
-                                R.string.settings_premium_unlocked_explanation,
-                            ),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    _webLink.postEvent("https://www.chronicleapp.net/support")
-                                }
-                            },
-                    )
-                } else {
-                    PreferenceModel(
-                        type = PreferenceType.CLICKABLE,
-                        title = FormattableString.from(R.string.settings_premium_upgrade_label),
-                        explanation =
-                            FormattableString.from(
-                                R.string.settings_premium_upgrade_explanation,
-                            ),
-                        click =
-                            object : PreferenceClick {
-                                override fun onClick() {
-                                    _webLink.postEvent("https://www.chronicleapp.net/support")
-                                }
-                            },
-                    )
-                },
+                PreferenceModel(
+                    type = PreferenceType.CLICKABLE,
+                    title = FormattableString.from(R.string.settings_support_label),
+                    explanation = FormattableString.from(R.string.settings_support_explanation),
+                    click =
+                        object : PreferenceClick {
+                            override fun onClick() {
+                                _webLink.postEvent("https://www.chronicleapp.net/support")
+                            }
+                        },
+                ),
                 PreferenceModel(
                     PreferenceType.TITLE,
                     FormattableString.from(R.string.settings_category_appearance),
@@ -830,7 +802,10 @@ class SettingsViewModel(
                                 override fun onClick() {
                                     viewModelScope.launch {
                                         withContext(Dispatchers.IO) {
-                                            Fresco.getImagePipeline().clearCaches()
+                                            Injector.get().imageLoader().let { loader ->
+                                                loader.memoryCache?.clear()
+                                                loader.diskCache?.clear()
+                                            }
                                         }
                                     }
                                 }

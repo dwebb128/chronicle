@@ -55,7 +55,13 @@ class LoginViewModel(private val plexLoginRepo: IPlexLoginRepo) : ViewModel() {
     suspend fun startChromeCustomTabsAuth(): StateFlow<PlexAuthState> {
         // Create coordinator if not exists (use viewModelScope for lifecycle-aware coroutines)
         if (authCoordinator == null) {
-            authCoordinator = PlexAuthCoordinator(plexLoginRepo, viewModelScope)
+            authCoordinator =
+                PlexAuthCoordinator(
+                    plexLoginRepo,
+                    Injector.get().plexLoginService(),
+                    Injector.get().plexPrefs(),
+                    viewModelScope,
+                )
         }
 
         // Start authentication flow

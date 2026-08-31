@@ -5,8 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.request.ImageRequest
+import coil.load
 import local.oss.chronicle.data.sources.plex.model.PlexUser
 import local.oss.chronicle.databinding.ListItemUserBinding
 
@@ -33,16 +32,8 @@ class UserListAdapter(val clickListener: UserClickListener) :
                 clickListener: UserClickListener,
             ) {
                 binding.user = user
-                // A null image request renders the XML placeholder (ic_person_white)
-                val imageRequest =
-                    user.thumb
-                        .takeIf { it.isNotEmpty() }
-                        ?.let(ImageRequest::fromUri)
-                binding.userThumb.controller =
-                    Fresco.newDraweeControllerBuilder()
-                        .setImageRequest(imageRequest)
-                        .setOldController(binding.userThumb.controller)
-                        .build()
+                // A blank thumb leaves the XML placeholder (ic_person_white) showing.
+                binding.userThumb.load(user.thumb.takeIf { it.isNotEmpty() })
                 binding.clickListener = clickListener
                 binding.executePendingBindings()
             }

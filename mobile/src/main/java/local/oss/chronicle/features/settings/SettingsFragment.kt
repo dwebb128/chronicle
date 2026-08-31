@@ -11,8 +11,6 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
-import local.oss.chronicle.application.ChronicleBillingManager
 import local.oss.chronicle.application.MainActivity
 import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.ITrackRepository
@@ -41,8 +39,6 @@ class SettingsFragment : Fragment() {
     @Inject
     lateinit var plexLoginRepo: IPlexLoginRepo
 
-    @Inject
-    lateinit var chronicleBillingManager: ChronicleBillingManager
 
     @Inject
     lateinit var cachedFileManager: ICachedFileManager
@@ -98,9 +94,6 @@ class SettingsFragment : Fragment() {
             },
         )
 
-        viewModel.upgradeToPremium.observeEvent(viewLifecycleOwner) {
-            chronicleBillingManager.launchBillingFlow(requireActivity())
-        }
 
         viewModel.webLink.observe(
             viewLifecycleOwner,
@@ -113,11 +106,18 @@ class SettingsFragment : Fragment() {
             },
         )
 
+        // The Play Services OSS-licenses viewer went with the rest of the Play dependencies;
+        // the licence list is served from the project site instead.
         viewModel.showLicenseActivity.observe(
             viewLifecycleOwner,
             Observer {
                 if (it) {
-                    startActivity(Intent(context, OssLicensesMenuActivity::class.java))
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://github.com/dwebb128/chronicle/blob/main/LICENSE"),
+                        ),
+                    )
                     viewModel.setShowLicenseActivity(false)
                 }
             },

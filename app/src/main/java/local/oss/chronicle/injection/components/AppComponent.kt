@@ -33,13 +33,11 @@ interface AppComponent : CoreComponent {
 
     fun bookRepos(): BookRepository
 
-    fun plexLoginService(): PlexLoginService
 
     fun accountManager(): AccountManager
 
     fun activeLibraryProvider(): ActiveLibraryProvider
 
-    fun libraryRepository(): LibraryRepository
 
     fun accountRepository(): AccountRepository
 

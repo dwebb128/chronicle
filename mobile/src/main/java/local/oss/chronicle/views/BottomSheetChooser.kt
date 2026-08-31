@@ -253,8 +253,8 @@ class BottomSheetChooser : FrameLayout {
                 return LiteralString(string)
             }
 
-            val yes = from(R.string.yes)
-            val no = from(R.string.no)
+            val yes = from(local.oss.chronicle.core.R.string.yes)
+            val no = from(local.oss.chronicle.core.R.string.no)
 
             val EMPTY_STRING = from("")
         }

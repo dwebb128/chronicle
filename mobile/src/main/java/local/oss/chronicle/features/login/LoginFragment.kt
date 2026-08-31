@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -71,7 +70,7 @@ class LoginFragment : Fragment() {
         }
 
         binding.oauthLogin.setOnClickListener {
-            startChromeCustomTabsAuth()
+            startLinkCodeAuth()
         }
 
         loginViewModel.errorEvent.observe(viewLifecycleOwner) { errorEvent ->
@@ -86,9 +85,9 @@ class LoginFragment : Fragment() {
     }
 
     /**
-     * Starts the Chrome Custom Tabs OAuth flow using PlexAuthCoordinator.
+     * Starts the plex.tv/link short-code sign-in through the shared PlexAuthCoordinator.
      */
-    private fun startChromeCustomTabsAuth() {
+    private fun startLinkCodeAuth() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 // Start auth and get state flow
@@ -129,13 +128,13 @@ class LoginFragment : Fragment() {
             }
 
             is PlexAuthState.WaitingForUser -> {
-                // PIN created, launch Chrome Custom Tab
+                // The code is live: show it and keep it on screen while we poll.
                 binding.loading.visibility = View.GONE
-                launchChromeCustomTab(state.authUrl)
+                showLinkCode(state.pinCode)
             }
 
             is PlexAuthState.Polling -> {
-                // Show loading indicator while polling
+                // Still waiting on the user to enter the code elsewhere, so leave it visible.
                 binding.loading.visibility = View.VISIBLE
             }
 
@@ -160,6 +159,7 @@ class LoginFragment : Fragment() {
                     "Login failed: ${state.message}",
                     Toast.LENGTH_LONG,
                 ).show()
+                hideLinkCode()
                 loginViewModel.resetAuth()
             }
 
@@ -172,6 +172,7 @@ class LoginFragment : Fragment() {
                     "Login timed out. Please try again.",
                     Toast.LENGTH_LONG,
                 ).show()
+                hideLinkCode()
                 loginViewModel.resetAuth()
             }
 
@@ -184,34 +185,28 @@ class LoginFragment : Fragment() {
                     "Login cancelled",
                     Toast.LENGTH_SHORT,
                 ).show()
+                hideLinkCode()
                 loginViewModel.resetAuth()
             }
         }
     }
 
     /**
-     * Launches Chrome Custom Tab with the OAuth URL.
+     * Shows the plex.tv/link code. A phone has a browser of its own, but the code flow is the
+     * one the watch uses and works the same here, so both apps share a single login path.
      */
-    private fun launchChromeCustomTab(url: String) {
-        Timber.i("Launching Chrome Custom Tab with URL: $url")
+    private fun showLinkCode(code: String) {
+        Timber.i("Showing plex.tv/link code")
+        binding.oauthLogin.visibility = View.GONE
+        binding.linkInstructions.visibility = View.VISIBLE
+        binding.linkCode.visibility = View.VISIBLE
+        binding.linkCode.text = code
+    }
 
-        val customTabsIntent =
-            CustomTabsIntent.Builder()
-                .setShowTitle(true)
-                .setUrlBarHidingEnabled(false)
-                .build()
-
-        try {
-            customTabsIntent.launchUrl(requireContext(), Uri.parse(url))
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to launch Chrome Custom Tab")
-            Toast.makeText(
-                requireContext(),
-                "Failed to open browser. Please ensure a browser is installed.",
-                Toast.LENGTH_LONG,
-            ).show()
-            loginViewModel.cancelAuth()
-        }
+    private fun hideLinkCode() {
+        binding.linkInstructions.visibility = View.GONE
+        binding.linkCode.visibility = View.GONE
+        binding.oauthLogin.visibility = View.VISIBLE
     }
 
     override fun onDestroyView() {

@@ -154,9 +154,9 @@ class AudiobookDetailsViewModel(
     val cacheIconDrawable: LiveData<Int> =
         cacheStatus.map { status ->
             return@map when (status) {
-                CACHING -> R.drawable.ic_cloud_download_white // Doesn't matter, we show a spinner over it
-                NOT_CACHED -> R.drawable.ic_cloud_download_white
-                CACHED -> R.drawable.ic_cloud_done_white
+                CACHING -> local.oss.chronicle.core.R.drawable.ic_cloud_download_white // Doesn't matter, we show a spinner over it
+                NOT_CACHED -> local.oss.chronicle.core.R.drawable.ic_cloud_download_white
+                CACHED -> local.oss.chronicle.core.R.drawable.ic_cloud_done_white
             }
         }
 
@@ -339,10 +339,6 @@ class AudiobookDetailsViewModel(
     }
 
     fun onCacheButtonClick() {
-        if (!prefsRepo.isPremium) {
-            showUserMessage(FormattableString.from(R.string.premium_required_offline_playback))
-            return
-        }
         when (cacheStatus.value) {
             NOT_CACHED -> {
                 Timber.i("Caching tracks for \"${audiobook.value?.title}\"")

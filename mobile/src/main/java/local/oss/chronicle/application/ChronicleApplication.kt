@@ -9,9 +9,8 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.StrictMode
 import android.os.StrictMode.VmPolicy
-import com.bumptech.glide.Glide
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.core.ImagePipelineConfig
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import local.oss.chronicle.BuildConfig
@@ -31,7 +30,7 @@ import javax.inject.Singleton
 // a singleton
 @Suppress("LeakingThis")
 @Singleton
-open class ChronicleApplication : Application() {
+open class ChronicleApplication : Application(), ImageLoaderFactory {
     // Instance of the AppComponent that will be used by all the Activities in the project
     val appComponent by lazy {
         initializeComponent()
@@ -57,9 +56,6 @@ open class ChronicleApplication : Application() {
     lateinit var prefsRepo: PrefsRepo
 
     @Inject
-    lateinit var billingManager: ChronicleBillingManager
-
-    @Inject
     lateinit var unhandledExceptionHandler: CoroutineExceptionHandler
 
     @Inject
@@ -69,7 +65,7 @@ open class ChronicleApplication : Application() {
     lateinit var plexLoginService: PlexLoginService
 
     @Inject
-    lateinit var frescoConfig: ImagePipelineConfig
+    lateinit var imageLoader: ImageLoader
 
     @Inject
     lateinit var legacyAccountMigration: LegacyAccountMigration
@@ -111,19 +107,15 @@ open class ChronicleApplication : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
+        // Hand :core the graph before anything in the shared layer can reach Injector.get().
+        Injector.install(appComponent)
+
         appComponent.inject(this)
         logAccountsAndLibraries() // DEBUG: Log database state
         setupNetwork(plexPrefs)
         updateDownloadedFileState()
         runLegacyAccountMigration()
         super.onCreate()
-        Fresco.initialize(this, frescoConfig)
-        // TODO: remove in a future version
-        applicationScope.launch {
-            withContext(Dispatchers.IO) {
-                Glide.get(Injector.get().applicationContext()).clearDiskCache()
-            }
-        }
     }
 
     /**
@@ -344,13 +336,23 @@ open class ChronicleApplication : Application() {
         plexConfig.connectToServer(plexMediaService)
     }
 
+    /**
+     * Coil resolves every `AsyncImage` that is not handed an explicit loader through this factory.
+     * Returning the injected instance is what makes the Compose screens share the media
+     * [okhttp3.OkHttpClient] — and with it the Plex auth interceptor, connection pool and disk
+     * cache — with the notification and media-session artwork loaded via [PlexConfig]. Read off
+     * [appComponent] rather than the injected field so a very early image request cannot touch an
+     * uninitialised `lateinit`.
+     */
+    override fun newImageLoader(): ImageLoader = appComponent.imageLoader()
+
     override fun onTrimMemory(level: Int) {
-        Fresco.getImagePipeline().clearMemoryCaches()
+        imageLoader.memoryCache?.clear()
         super.onTrimMemory(level)
     }
 
     override fun onLowMemory() {
-        Fresco.getImagePipeline().clearMemoryCaches()
+        imageLoader.memoryCache?.clear()
         super.onLowMemory()
     }
 }
