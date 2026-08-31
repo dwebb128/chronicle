@@ -38,9 +38,10 @@ import local.oss.chronicle.ui.theme.ChronicleTheme
  * Fragments. Screens obtain their ViewModel factories from `LocalActivityComponent.current` — see
  * PLAN.md section 4 ("ViewModel-into-Compose pattern").
  */
-val LocalActivityComponent = staticCompositionLocalOf<ActivityComponent> {
-    error("LocalActivityComponent not provided — must be supplied by MainActivity's setContent {}")
-}
+val LocalActivityComponent =
+    staticCompositionLocalOf<ActivityComponent> {
+        error("LocalActivityComponent not provided — must be supplied by MainActivity's setContent {}")
+    }
 
 /**
  * Root composable for the whole app, installed by `MainActivity.setContent {}`.

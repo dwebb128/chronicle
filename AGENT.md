@@ -4,19 +4,32 @@ This document helps AI agents understand and work effectively with the Chronicle
 
 ## 1. Project Overview
 
-Chronicle Epilogue is a **standalone Wear OS audiobook player** (Wear OS 6 / API 36, built with
-Pixel Watch 4 in mind) that integrates with Plex Media Server. It allows users to stream and
-download audiobooks hosted on their Plex server, right on the watch, with features like adjustable
-playback speed, sleep timer, chapter navigation, and offline playback.
+Chronicle Epilogue is an **unofficial fork** of
+[mattttvaughn/chronicle](https://github.com/mattttvaughn/chronicle) that adds Wear OS support. It
+is a Plex audiobook player that ships **two apps** — one for Android phones and a standalone one
+for Wear OS — with adjustable playback speed, sleep timer, chapter navigation and offline
+playback.
 
-The app was converted in-place from an earlier Android phone app; there is no phone app or
-separate `:wear` module — `:app` **is** the Wear OS app. See
-[`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) for platform specifics
-and [`docs/features/wear-ui.md`](docs/features/wear-ui.md) for the screen set.
+**Module layout — three modules, and the names are not obvious:**
+
+| Module | What it is | minSdk | UI |
+| --- | --- | --- | --- |
+| `:core` | Shared library: Plex client, Room databases, playback service, DI contract | 30 | none |
+| `:app` | **The Wear OS app** (kept this name so Play publishing and CI paths did not move) | 34 | Compose for Wear |
+| `:mobile` | The Android phone app | 30 | Fragments + Data Binding |
+
+Both app modules depend on `:core` and share the applicationId `local.oss.chronicle`, so Play
+treats them as one listing and a single device holds only one of them.
+
+`:core` reaches the graph through `Injector`, which holds a `CoreComponent` each `Application`
+installs in `onCreate`; both `AppComponent`s extend it. Never make `:core` depend on either app
+module. See [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) for platform
+specifics, [`docs/features/wear-ui.md`](docs/features/wear-ui.md) for the watch screens, and
+[`docs/INSTALLING.md`](docs/INSTALLING.md) for building and sideloading both apps.
 
 **Key Details:**
 - **Language:** Kotlin
-- **Platform:** Wear OS (minSdk 34, targetSdk 36, compileSdk 36)
+- **Platforms:** Wear OS (`:app`, minSdk 34) and Android phone (`:mobile`, minSdk 30); targetSdk 36, compileSdk 36
 - **Build System:** Gradle with Kotlin DSL
 - **License:** GPLv3 (code) + All Rights Reserved (branding assets)
 

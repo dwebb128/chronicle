@@ -1,7 +1,6 @@
 package local.oss.chronicle.ui.components
 
 import android.content.res.Resources
-import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,9 +19,7 @@ import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import local.oss.chronicle.R
 import local.oss.chronicle.ui.rotaryScrollable
-
 
 fun Resources.getString(fs: FormattableString?): String {
     return fs?.format(this) ?: ""

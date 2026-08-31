@@ -1,21 +1,22 @@
-# Installing Chronicle Epilogue from source
+# Building and installing Chronicle Epilogue
 
-This guide covers building and sideloading the app from this repository.
+This branch builds **two apps** from one source tree:
 
-> **Important — there is only one app on this branch.**
-> The `claude/chronicle-android-to-watch-uuur6z` branch (PR #1) *converts* Chronicle from a
-> phone app into a standalone **Wear OS** app. It does not add a watch variant alongside the
-> phone one — it replaces it. There are no product flavors, and the manifest declares
-> `<uses-feature android:name="android.hardware.type.watch" android:required="true" />`,
-> so this branch produces a watch APK and nothing else.
->
-> If you want the **phone** build, you must build it from `main`, which is the last
-> pre-conversion state of the app. Both paths are documented below.
+| App | Gradle module | APK | `minSdk` | Target device |
+| --- | --- | --- | --- | --- |
+| Phone | `:mobile` | `mobile/build/outputs/apk/debug/mobile-debug.apk` | 30 (Android 11) | Pixel phone |
+| Watch | `:app` | `app/build/outputs/apk/debug/app-debug.apk` | 34 (Android 14) | Pixel Watch |
 
-| Target | Branch | `minSdk` | Notes |
-| --- | --- | --- | --- |
-| Wear OS (watch) | `claude/chronicle-android-to-watch-uuur6z` | 34 (Android 14) | Standalone; no companion phone app required |
-| Android (phone) | `main` | 30 (Android 11) | Pre-conversion phone app |
+Both sit on `:core`, a library module holding the Plex API client, the Room databases and the
+playback service. The watch app is standalone — once it is signed in it needs no phone.
+
+> The module named `:app` is the **watch** app. It kept that name so the Play publishing config,
+> signing paths and CI artifact paths did not have to change; `:mobile` is the phone app.
+
+Both APKs share the applicationId `local.oss.chronicle`, which is what lets Play treat them as one
+listing and deliver the right one to each form factor. It also means **a single device can only
+hold one of them at a time** — installing the phone build over the watch build on the same device
+replaces it.
 
 ---
 
@@ -23,25 +24,21 @@ This guide covers building and sideloading the app from this repository.
 
 ### 1.1 JDK 17
 
-The Gradle build targets Java 17 (`sourceCompatibility`/`targetCompatibility = VERSION_17`,
-`jvmTarget = "17"`), and CI runs on `java-version: '17'`. A newer JDK will also run the build,
-but 17 is the supported configuration.
+The build targets Java 17 and CI runs on it. A newer JDK will also work, but 17 is the supported
+configuration.
 
 ```bash
-java -version   # expect 17 (or newer)
+java -version   # expect 17 or newer
 ```
 
 ### 1.2 Android SDK
 
-You need the Android SDK with **platform 36** and **build-tools 36.0.0** (the project sets
-`compileSdk = 36` / `targetSdk = 36`).
+You need **platform 36** and **build-tools 36.0.0** (`compileSdk`/`targetSdk` are both 36).
 
-If you use Android Studio, install these via **Settings → Languages & Frameworks → Android SDK**.
-
-To set the SDK up from the command line with no Android Studio:
+With Android Studio, install them under **Settings → Languages & Frameworks → Android SDK**.
+From the command line, with no Android Studio:
 
 ```bash
-# Download the command-line tools
 mkdir -p "$HOME/android-sdk/cmdline-tools"
 cd "$HOME/android-sdk"
 curl -sSL -o cmdtools.zip \
@@ -50,14 +47,13 @@ unzip -q cmdtools.zip -d cmdline-tools-tmp
 mv cmdline-tools-tmp/cmdline-tools cmdline-tools/latest
 rm -rf cmdtools.zip cmdline-tools-tmp
 
-# Accept licences and install the packages the build needs
 export ANDROID_HOME="$HOME/android-sdk"
 yes | ./cmdline-tools/latest/bin/sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 ./cmdline-tools/latest/bin/sdkmanager --sdk_root="$ANDROID_HOME" \
   "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 ```
 
-(On macOS substitute `commandlinetools-mac-*.zip`; on Windows use the `-win-` archive.)
+(On macOS use `commandlinetools-mac-*.zip`; on Windows the `-win-` archive.)
 
 ### 1.3 Point Gradle at the SDK
 
@@ -67,10 +63,9 @@ From the repository root:
 echo "sdk.dir=$HOME/android-sdk" > local.properties
 ```
 
-`local.properties` is already in `.gitignore` — do not commit it. Setting the `ANDROID_HOME`
-environment variable instead works equally well.
+`local.properties` is gitignored — do not commit it. Exporting `ANDROID_HOME` works just as well.
 
-### 1.4 Clone the repository
+### 1.4 Clone
 
 ```bash
 git clone https://github.com/dwebb128/chronicle.git
@@ -79,115 +74,131 @@ cd chronicle
 
 ---
 
-## 2. Wear OS build (this branch)
-
-### 2.1 Build the APK
+## 2. Build
 
 ```bash
-git checkout claude/chronicle-android-to-watch-uuur6z
-./gradlew assembleDebug
+./gradlew assembleDebug          # both APKs
+./gradlew :mobile:assembleDebug  # phone only
+./gradlew :app:assembleDebug     # watch only
 ```
 
-The APK is written to:
+For optimised builds use `assembleRelease`. Release builds are signed from `keystore.properties`
+(see `keystore.properties.example`) or from the `KEYSTORE_FILE` / `KEYSTORE_PASSWORD` / `KEY_ALIAS`
+/ `KEY_PASSWORD` environment variables, falling back to the debug key if neither is present.
 
+---
+
+## 3. Install on a Pixel phone
+
+**Step 1 — enable developer options.** On the phone, **Settings → About phone** and tap **Build
+number** seven times.
+
+**Step 2 — enable USB debugging.** **Settings → System → Developer options → USB debugging**.
+
+**Step 3 — connect over USB and install.**
+
+```bash
+adb devices                       # accept the "Allow USB debugging" prompt on the phone
+adb install -r mobile/build/outputs/apk/debug/mobile-debug.apk
 ```
-app/build/outputs/apk/debug/app-debug.apk
+
+Or let Gradle do both steps: `./gradlew :mobile:installDebug`.
+
+To install over Wi-Fi instead (Android 11+), pair once under **Developer options → Wireless
+debugging → Pair device with pairing code**:
+
+```bash
+adb pair <phone-ip>:<pairing-port>    # enter the 6-digit code shown on the phone
+adb connect <phone-ip>:<port>         # the port under "Wireless debugging", not the pairing one
+adb install -r mobile/build/outputs/apk/debug/mobile-debug.apk
 ```
 
-For an optimised build use `./gradlew assembleRelease`. Release builds are signed with the
-config in `keystore.properties` (see `keystore.properties.example`) or with the
-`KEYSTORE_FILE` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` environment variables. If
-neither is present, the release build falls back to the debug signing key.
+---
 
-### 2.2 Install onto a physical watch
+## 4. Install on a Pixel Watch
 
-The app is **standalone** (`com.google.android.wearable.standalone = true`), so it installs
-directly onto the watch — you do not need a paired phone app.
+The watch app is standalone, so it installs directly — no companion app needed. A Pixel Watch has
+no USB data port, so this goes over Wi-Fi.
 
-**Step 1 — enable developer options on the watch.** On the watch, open
-**Settings → System → About → Versions** and tap **Build number** seven times.
+**Step 1 — enable developer options.** On the watch, **Settings → System → About → Versions**, then
+tap **Build number** seven times.
 
-**Step 2 — enable debugging.** Go back to **Settings → Developer options** and turn on
-**ADB debugging** and **Debug over Wi-Fi**. The Developer options screen shows the watch's IP
-address once Wi-Fi debugging is active.
+**Step 2 — enable debugging.** **Settings → Developer options**, turn on **ADB debugging** and
+**Debug over Wi-Fi**. The screen then shows the watch's IP address.
 
-**Step 3 — connect and install.** With your computer on the same Wi-Fi network:
+**Step 3 — connect and install.** With your computer on the same Wi-Fi network as the watch:
 
 ```bash
 adb connect <watch-ip>:5555
-adb devices                       # confirm the watch is listed
+adb devices                       # accept "Always allow from this computer" on the watch
 adb -s <watch-ip>:5555 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Accept the **Always allow from this computer** prompt on the watch the first time.
+If more than one device is attached, `-s <watch-ip>:5555` is what keeps the watch APK off your
+phone — worth being explicit about, since both APKs share an applicationId.
 
-`-r` reinstalls over an existing copy while keeping its data. If you hit
-`INSTALL_FAILED_UPDATE_INCOMPATIBLE` (usually a signing-key change between a Play Store copy
-and your local build), uninstall first with `adb -s <watch-ip>:5555 uninstall local.oss.chronicle`.
-
-Watches with a USB data dock can skip the Wi-Fi steps and use plain `adb install` over USB.
-
-### 2.3 Install onto a Wear OS emulator
-
-Create a **Wear OS** AVD running **API 34 or newer** — the branch sets `minSdk = 34`, so an
-API 33 or older watch image will reject the APK with `INSTALL_FAILED_OLDER_SDK`. In Android
-Studio: **Device Manager → Add a device → Wear OS**, then pick a system image of API 34+.
-
-With the emulator running, `./gradlew installDebug` builds and installs in one step.
-
-### 2.4 First run
-
-The watch build authenticates with the **plex.tv/link** code flow rather than a browser
-redirect. On first launch the watch shows a short code; enter it at
-[plex.tv/link](https://plex.tv/link) on any browser, and the watch picks up the token once you
-confirm. Then choose your Plex server and audiobook library on the watch.
+Watches with a USB data dock can skip the Wi-Fi steps and use plain `adb install`.
 
 ---
 
-## 3. Android phone build (from `main`)
+## 5. Testing both at once
 
-This branch does **not** produce a phone APK. Build the pre-conversion app from `main`:
+Because the two APKs share an applicationId, keep them on separate devices — a Pixel phone and a
+Pixel Watch — rather than trying to hold both on one. With both connected:
 
 ```bash
-git checkout main
-./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb devices
+# List of devices attached
+# 1A2B3C4D5E6F        device      <- phone
+# 192.168.1.42:5555   device      <- watch
+
+adb -s 1A2B3C4D5E6F      install -r mobile/build/outputs/apk/debug/mobile-debug.apk
+adb -s 192.168.1.42:5555 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`main` sets `minSdk = 30`, so any phone on Android 11 or newer will accept it.
+Both apps sign in with the **plex.tv/link** short code: the app shows a code, you enter it at
+[plex.tv/link](https://plex.tv/link) in any browser, and the app picks up the token once you
+confirm. They hold separate sessions, so sign in on each device.
 
-Note that `main` and the Wear branch share the same `applicationId`
-(`local.oss.chronicle`) and the same `versionCode`. A device can therefore hold only one of
-them at a time, and swapping between the two on one device requires an uninstall first.
+Watch the logs of either with:
 
-### Sideloading the watch APK onto a phone
+```bash
+adb -s <device> logcat --pid=$(adb -s <device> shell pidof -s local.oss.chronicle)
+```
 
-`adb install` does not enforce `uses-feature` filtering the way the Play Store does, so the
-watch APK can technically be pushed onto a phone. It is not worth doing: the entire UI is
-built with Compose for Wear OS and is laid out for a small round screen. Use the `main` build
-for phones.
+### Emulators
+
+- **Phone:** any Pixel AVD on API 30+.
+- **Watch:** a **Wear OS** AVD on **API 34 or newer** — an older watch image rejects the APK with
+  `INSTALL_FAILED_OLDER_SDK`. In Android Studio: **Device Manager → Add a device → Wear OS**.
+
+With one emulator running, `./gradlew :mobile:installDebug` or `:app:installDebug` builds and
+installs in a single step.
 
 ---
 
-## 4. Verifying your build
+## 6. Verifying a build
 
 The checks CI runs (`.github/workflows/ci.yml`) are:
 
 ```bash
-./gradlew testDebugUnitTest   # unit tests
-./gradlew assembleDebug       # debug APK
+./gradlew testDebugUnitTest   # unit tests across :core, :app and :mobile
+./gradlew assembleDebug       # both debug APKs
 ```
 
-Both are worth running locally before you file a change.
+Both are worth running before filing a change.
 
-## 5. Troubleshooting
+---
+
+## 7. Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `SDK location not found` | `local.properties` is missing or `ANDROID_HOME` is unset — see §1.3. |
-| `Failed to find Platform SDK with path: platforms;android-36` | Install the platform: `sdkmanager "platforms;android-36"`. |
-| `INSTALL_FAILED_OLDER_SDK` | The watch or emulator is below API 34. The Wear branch requires Android 14+. |
-| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | A differently-signed copy is installed. `adb uninstall local.oss.chronicle`, then reinstall. |
-| `adb connect` times out | The watch and computer are on different networks, or **Debug over Wi-Fi** turned itself off — it resets when the watch disconnects from Wi-Fi. |
-| Watch not listed in `adb devices` | Re-accept the **Always allow from this computer** prompt on the watch. |
+| `SDK location not found` | `local.properties` missing or `ANDROID_HOME` unset — see §1.3. |
+| `Failed to find Platform SDK with path: platforms;android-36` | `sdkmanager "platforms;android-36"`. |
+| `INSTALL_FAILED_OLDER_SDK` | Device below the module's minSdk: 30 for the phone app, 34 for the watch app. |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | A differently-signed copy is installed — often the *other* app, since they share an applicationId. `adb uninstall local.oss.chronicle`, then reinstall. |
+| The wrong app installed on a device | Both APKs share an applicationId; pass `-s <serial>` and check you named the right APK. |
+| `adb connect` to the watch times out | Watch and computer on different networks, or **Debug over Wi-Fi** switched itself off — it resets whenever the watch drops off Wi-Fi. |
+| Device missing from `adb devices` | Re-accept the authorisation prompt on the device. |
 | Gradle runs out of memory | Raise `org.gradle.jvmargs` in `gradle.properties` (defaults to `-Xmx2g`). |

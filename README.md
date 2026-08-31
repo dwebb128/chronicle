@@ -36,12 +36,12 @@ databases and the playback service.
 
 For more screenshots and information, visit [www.chronicleapp.net](https://www.chronicleapp.net)
 
-> **Note:** The screenshots linked above are from the earlier phone version of the app and do not yet reflect the Wear OS UI.
+> **Note:** The screenshots linked above show the phone app. The Wear OS UI is not pictured yet.
 
 ### Installing from source
 
-See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build the Wear OS app and sideload it
-onto a watch or a Wear OS emulator, plus how to build the older phone app from `main`.
+See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build both apps and sideload them onto a
+Pixel phone and a Pixel Watch (or their emulators).
 
 ### Reporting Bugs
 
