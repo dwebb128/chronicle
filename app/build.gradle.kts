@@ -140,6 +140,8 @@ ksp {
 
 dependencies {
 
+    implementation(project(":core"))
+
     implementation(libs.timber)
     implementation(libs.fetch)
     implementation(libs.work)

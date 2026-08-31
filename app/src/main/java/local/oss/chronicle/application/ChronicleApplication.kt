@@ -107,6 +107,9 @@ open class ChronicleApplication : Application(), ImageLoaderFactory {
             Timber.plant(Timber.DebugTree())
         }
 
+        // Hand :core the graph before anything in the shared layer can reach Injector.get().
+        Injector.install(appComponent)
+
         appComponent.inject(this)
         logAccountsAndLibraries() // DEBUG: Log database state
         setupNetwork(plexPrefs)

@@ -38,7 +38,6 @@
     <dimen name="audiobook_item_width">128dp</dimen>
     <dimen name="audiobook_item_radius">8dp</dimen>
     <dimen name="audiobook_listened_indicator_size">16dp</dimen>
-    <dimen name="audiobook_image_width">96dp</dimen>
 
     <!-- Library audiobook list item | details -->
     <dimen name="library_details_audiobook_height">64dp</dimen>

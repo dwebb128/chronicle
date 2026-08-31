@@ -55,3 +55,6 @@ Thumbs.db
 
 # Kotlin compiler daemon scratch files
 .kotlin/
+
+# Local SDK pointer written by the build environment
+local.properties

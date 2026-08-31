@@ -25,15 +25,6 @@
     <string name="cannot_sync_no_server">Not connected to server</string>
 
     <!-- Playback -->
-    <string name="notification_channel">Now playing</string>
-    <string name="notification_channel_description">Shows currently playing music</string>
-    <string name="notification_play">Play</string>
-    <string name="notification_pause">Pause</string>
-    <string name="skip_to_previous">Skip to previous track/chapter</string>
-    <string name="skip_to_next">Skip to next track/chapter</string>
-    <string name="skip_forwards">Skip forwards</string>
-    <string name="skip_forwards_reached_last_chapter">You already reached the last chapter/track</string>
-    <string name="skip_backwards">Skip backwards</string>
     <string name="warning_jump_to_chapter_will_clear_progress">This will clear your saved progress. Continue?</string>
     <string name="playback_error_401">Playback error (401): Not authorized</string>
     <string name="playback_error_503">Playback error (503): Server unavailable</string>
@@ -42,28 +33,6 @@
     <!-- Downloads -->
     <string name="download_all_prompt">Download will use %1$s. %2$s available</string>
     <string name="delete_cache_files_prompt">Delete cached files?</string>
-    <string name="download_notification_title">Downloading %1$s</string>
-    <string name="download_notification_cancel">Cancel</string>
-    <string name="download_notification_cancel_all">Cancel all</string>
-    <string name="download_starting">Downloading %1$s: (%2$s%%)</string>
-    <string name="download_successful_notification_content">Download complete: %1$s</string>
-    <string name="download_successful_notification_title">Download finished</string>
-    <string name="download_failed_notification_title">Download failed</string>
-    <string name="download_failed_notification_content">Download failed: %1$s</string>
-    <string name="downloads_completed_summary_mixed">Downloads completed, %1$d succeeded, %2$d failed</string>
-    <plurals name="downloads_failed_summary">
-        <item quantity="one">Download failed</item>
-        <item quantity="other">Downloads failed</item>
-    </plurals>
-    <plurals name="downloads_complete_summary">
-        <item quantity="one">Download complete</item>
-        <item quantity="other">Downloads complete</item>
-    </plurals>
-    <plurals name="download_books_summary">
-        <item quantity="one">Downloading %1$d book</item>
-        <item quantity="other">Downloading %1$d books</item>
-    </plurals>
-    <string name="download_channel_description">Shows current downloads</string>
 
     <!-- Sleep timer-->
     <string name="sleep_timer">Sleep timer</string>
@@ -115,19 +84,6 @@
 
     <!-- Spoken TTS error messages (VoiceCommandBridgeAudio, D44 — kept though the Android Auto
          browsing UI these were originally written for is cut) -->
-    <string name="voice_bridge_preparing_audiobook">Getting ready to play your audiobook</string>
-    <string name="auto_access_error_not_logged_in">Not logged in to Chronicle</string>
-    <string name="auto_access_error_no_server_chosen">No server chosen. Please return to Chronicle and choose a server and library</string>
-    <string name="auto_access_error_no_user_chosen">No user chosen. Please return to Chronicle and finish logging in</string>
-    <string name="auto_access_error_no_library_chosen">No library chosen. Please return to Chronicle and choose a library</string>
-    <string name="auto_access_error_invalid_client">Illegal Auto client signature. Only Google Assistant, WearOS, and Android Auto can access Chronicle\'s content</string>
-    <string name="auto_error_no_results_for_query">No audiobooks found for \"%1$s\"</string>
-    <string name="auto_error_library_empty">Your audiobook library is empty</string>
-    <string name="auto_error_audiobook_not_available">This audiobook is not available</string>
-    <string name="auto_error_playback_failed">Unable to play audiobook</string>
-    <string name="auto_error_connection_timeout">Connection timeout - please check your network</string>
-    <string name="error_not_logged_in_voice">Please log in to Chronicle first</string>
-    <string name="auto_error_complete_required_steps_on_phone">Please complete the required steps on you phone before continuing here</string>
 
     <string name="submit">Submit</string>
     <string name="pin">Pin</string>

@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Singleton
 @Component(modules = [AppModule::class])
-interface AppComponent {
+interface AppComponent : CoreComponent {
     fun applicationContext(): Context
 
     fun audioOutputMonitor(): AudioOutputMonitor

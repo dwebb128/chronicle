@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auto_access_error_invalid_client">Illegal Auto client signature. Only Google Assistant, WearOS, and Android Auto can access Chronicle\'s content</string>
+    <string name="auto_access_error_no_library_chosen">No library chosen. Please return to Chronicle and choose a library</string>
+    <string name="auto_access_error_no_server_chosen">No server chosen. Please return to Chronicle and choose a server and library</string>
+    <string name="auto_access_error_no_user_chosen">No user chosen. Please return to Chronicle and finish logging in</string>
+    <string name="auto_access_error_not_logged_in">Not logged in to Chronicle</string>
+    <string name="auto_error_audiobook_not_available">This audiobook is not available</string>
+    <string name="auto_error_complete_required_steps_on_phone">Please complete the required steps on you phone before continuing here</string>
+    <string name="auto_error_connection_timeout">Connection timeout - please check your network</string>
+    <string name="auto_error_library_empty">Your audiobook library is empty</string>
+    <string name="auto_error_no_results_for_query">No audiobooks found for \"%1$s\"</string>
+    <string name="auto_error_playback_failed">Unable to play audiobook</string>
+    <string name="download_channel_description">Shows current downloads</string>
+    <string name="download_failed_notification_content">Download failed: %1$s</string>
+    <string name="download_failed_notification_title">Download failed</string>
+    <string name="download_notification_cancel">Cancel</string>
+    <string name="download_notification_cancel_all">Cancel all</string>
+    <string name="download_notification_title">Downloading %1$s</string>
+    <string name="download_starting">Downloading %1$s: (%2$s%%)</string>
+    <string name="download_successful_notification_content">Download complete: %1$s</string>
+    <string name="download_successful_notification_title">Download finished</string>
+    <string name="downloads_completed_summary_mixed">Downloads completed, %1$d succeeded, %2$d failed</string>
+    <string name="error_not_logged_in_voice">Please log in to Chronicle first</string>
+    <string name="notification_channel">Now playing</string>
+    <string name="notification_channel_description">Shows currently playing music</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_play">Play</string>
+    <string name="skip_backwards">Skip backwards</string>
+    <string name="skip_forwards">Skip forwards</string>
+    <string name="skip_forwards_reached_last_chapter">You already reached the last chapter/track</string>
+    <string name="skip_to_next">Skip to next track/chapter</string>
+    <string name="skip_to_previous">Skip to previous track/chapter</string>
+    <string name="voice_bridge_preparing_audiobook">Getting ready to play your audiobook</string>
+    <plurals name="download_books_summary">
+            <item quantity="one">Downloading %1$d book</item>
+            <item quantity="other">Downloading %1$d books</item>
+        </plurals>
+    <plurals name="downloads_complete_summary">
+            <item quantity="one">Download complete</item>
+            <item quantity="other">Downloads complete</item>
+        </plurals>
+    <plurals name="downloads_failed_summary">
+            <item quantity="one">Download failed</item>
+            <item quantity="other">Downloads failed</item>
+        </plurals>
+    <dimen name="audiobook_image_width">96dp</dimen>
+</resources>
