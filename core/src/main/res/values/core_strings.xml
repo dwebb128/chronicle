@@ -45,4 +45,6 @@
             <item quantity="other">Downloads failed</item>
         </plurals>
     <dimen name="audiobook_image_width">96dp</dimen>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>

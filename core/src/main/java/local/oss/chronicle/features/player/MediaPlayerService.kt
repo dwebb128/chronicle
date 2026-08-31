@@ -34,7 +34,6 @@ import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.*
 import local.oss.chronicle.core.R
-import local.oss.chronicle.application.ChronicleApplication
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.ITrackRepository
@@ -266,7 +265,9 @@ class MediaPlayerService :
         Timber.d("[TokenInjection] MediaPlayerService.onCreate() starting - about to inject dependencies")
 
         DaggerServiceComponent.builder()
-            .appComponent((application as ChronicleApplication).appComponent)
+            // The service is shared by both app modules, so it takes the CoreComponent slice
+            // each Application installs rather than casting to one app's Application type.
+            .coreComponent(Injector.get())
             .serviceModule(ServiceModule(this))
             .build()
             .inject(this)

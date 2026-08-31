@@ -213,11 +213,10 @@ class MainActivity : ComponentActivity() {
         }
 
     companion object {
-        const val FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING = "OPEN_ACTIVITY_TO_AUDIOBOOK"
-        const val REQUEST_CODE_OPEN_APP_TO_CURRENTLY_PLAYING = -12
-        const val FLAG_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID = "OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID"
-
-        // add audiobook id to this number to avoid repeats
-        const val REQUEST_CODE_PREFIX_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID = -1001110
+        // Aliases for the shared launch contract in :core, which the media notification writes.
+        const val FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING =
+            LaunchFlags.FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING
+        const val FLAG_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID =
+            LaunchFlags.FLAG_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID
     }
 }

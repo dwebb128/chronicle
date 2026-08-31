@@ -22,59 +22,18 @@ import javax.inject.Singleton
 @Singleton
 @Component(modules = [AppModule::class])
 interface AppComponent : CoreComponent {
-    fun applicationContext(): Context
-
-    fun audioOutputMonitor(): AudioOutputMonitor
-
-    fun internalFilesDir(): File
-
-    fun externalDeviceDirs(): List<File>
-
-    fun sharedPrefs(): SharedPreferences
+    // Shared provisions are inherited from CoreComponent; only the watch app's own additions
+    // are declared here.
 
     fun trackDao(): TrackDao
 
-    fun bookDao(): BookDao
-
     fun collectionsDao(): CollectionsDao
-
-    fun moshi(): Moshi
-
-    fun plexLoginRepo(): IPlexLoginRepo
-
-    fun plexPrefs(): PlexPrefsRepo
-
-    fun prefsRepo(): PrefsRepo
-
-    fun trackRepo(): ITrackRepository
-
-    fun librarySyncRepo(): LibrarySyncRepository
 
     fun collectionsRepo(): CollectionsRepository
 
-    fun bookRepo(): IBookRepository
-
     fun bookRepos(): BookRepository
 
-    fun workManager(): WorkManager
-
-    fun unhandledExceptionHandler(): CoroutineExceptionHandler
-
-    fun plexConfig(): PlexConfig
-
     fun plexLoginService(): PlexLoginService
-
-    fun plexMediaService(): PlexMediaService
-
-    fun cachedFileManager(): ICachedFileManager
-
-    fun currentlyPlaying(): CurrentlyPlaying
-
-    fun playbackStateController(): local.oss.chronicle.features.player.PlaybackStateController
-
-    fun fetch(): Fetch
-
-    fun imageLoader(): ImageLoader
 
     fun accountManager(): AccountManager
 
@@ -84,15 +43,7 @@ interface AppComponent : CoreComponent {
 
     fun accountRepository(): AccountRepository
 
-    fun serverConnectionResolver(): ServerConnectionResolver
-
-    fun connectionRefreshCoordinator(): ConnectionRefreshCoordinator
-
-    fun progressReporter(): PlexProgressReporter
-
     fun scopedPlexServiceFactory(): ScopedPlexServiceFactory
-
-    fun playbackUrlResolver(): PlaybackUrlResolver
 
     // Inject
     fun inject(chronicleApplication: ChronicleApplication)

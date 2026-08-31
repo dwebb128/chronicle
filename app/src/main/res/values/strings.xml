@@ -70,8 +70,6 @@
     <string name="settings_log_out">Log out</string>
     <string name="settings_clear_downloads_warning">This will delete your downloaded files. Continue?</string>
     <string name="settings_pause_on_focus_lost_title">Pause during interruptions</string>
-    <string name="yes">Yes</string>
-    <string name="no">No</string>
 
     <string name="settings_jump_forward_title">Jump forward</string>
     <string name="settings_jump_backward_title">Jump backward</string>

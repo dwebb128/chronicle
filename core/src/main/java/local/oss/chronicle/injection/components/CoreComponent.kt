@@ -2,22 +2,31 @@ package local.oss.chronicle.injection.components
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.work.WorkManager
 import coil.ImageLoader
 import com.squareup.moshi.Moshi
 import com.tonyodev.fetch2.Fetch
 import kotlinx.coroutines.CoroutineExceptionHandler
+import local.oss.chronicle.data.local.BookDao
+import local.oss.chronicle.data.local.ChapterDao
 import local.oss.chronicle.data.local.IBookRepository
+import local.oss.chronicle.data.local.IChapterRepository
 import local.oss.chronicle.data.local.ITrackRepository
+import local.oss.chronicle.data.local.LibraryDao
 import local.oss.chronicle.data.local.LibrarySyncRepository
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
 import local.oss.chronicle.data.sources.plex.IPlexLoginRepo
+import local.oss.chronicle.data.sources.plex.ConnectionRefreshCoordinator
+import local.oss.chronicle.data.sources.plex.PlaybackUrlResolver
 import local.oss.chronicle.data.sources.plex.PlexConfig
 import local.oss.chronicle.data.sources.plex.PlexMediaService
 import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import local.oss.chronicle.data.sources.plex.PlexProgressReporter
 import local.oss.chronicle.data.sources.plex.ServerConnectionResolver
+import local.oss.chronicle.features.currentlyplaying.CurrentlyPlaying
 import local.oss.chronicle.features.player.AudioOutputMonitor
+import local.oss.chronicle.features.player.PlaybackStateController
 import java.io.File
 
 /**
@@ -71,4 +80,23 @@ interface CoreComponent {
     fun audioOutputMonitor(): AudioOutputMonitor
 
     fun unhandledExceptionHandler(): CoroutineExceptionHandler
+
+    fun workManager(): WorkManager
+
+    // Exposed for ServiceComponent, which depends on this component rather than on either app's.
+    fun bookDao(): BookDao
+
+    fun chapterDao(): ChapterDao
+
+    fun libraryDao(): LibraryDao
+
+    fun chapterRepo(): IChapterRepository
+
+    fun currentlyPlaying(): CurrentlyPlaying
+
+    fun playbackStateController(): PlaybackStateController
+
+    fun connectionRefreshCoordinator(): ConnectionRefreshCoordinator
+
+    fun playbackUrlResolver(): PlaybackUrlResolver
 }

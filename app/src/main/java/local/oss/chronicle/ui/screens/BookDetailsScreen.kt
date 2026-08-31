@@ -151,9 +151,9 @@ fun BookDetailsScreen(
                             painter =
                                 painterResource(
                                     if (cacheStatus == CACHED) {
-                                        R.drawable.ic_cloud_done_white
+                                        local.oss.chronicle.core.R.drawable.ic_cloud_done_white
                                     } else {
-                                        R.drawable.ic_cloud_download_white
+                                        local.oss.chronicle.core.R.drawable.ic_cloud_download_white
                                     },
                                 ),
                             contentDescription =

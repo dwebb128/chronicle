@@ -18,8 +18,8 @@ import com.tonyodev.fetch2.*
 import kotlinx.coroutines.*
 import local.oss.chronicle.core.R
 import local.oss.chronicle.application.Injector
-import local.oss.chronicle.application.MainActivity.Companion.FLAG_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID
-import local.oss.chronicle.application.MainActivity.Companion.REQUEST_CODE_PREFIX_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID
+import local.oss.chronicle.application.LaunchFlags.FLAG_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID
+import local.oss.chronicle.application.LaunchFlags.REQUEST_CODE_PREFIX_OPEN_ACTIVITY_TO_AUDIOBOOK_WITH_ID
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
 import timber.log.Timber

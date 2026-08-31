@@ -17,7 +17,7 @@ import local.oss.chronicle.injection.scopes.ServiceScope
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 @ServiceScope
-@Component(dependencies = [AppComponent::class], modules = [ServiceModule::class])
+@Component(dependencies = [CoreComponent::class], modules = [ServiceModule::class])
 interface ServiceComponent {
     fun progressUpdater(): ProgressUpdater
 

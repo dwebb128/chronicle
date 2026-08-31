@@ -103,10 +103,10 @@ android {
     sourceSets {
         // Share test utilities between unit tests and instrumented tests
         getByName("test") {
-            java.srcDir("src/testShared/java")
+            java.srcDir("../core/src/testShared/java")
         }
         getByName("androidTest") {
-            java.srcDir("src/testShared/java")
+            java.srcDir("../core/src/testShared/java")
         }
     }
 }

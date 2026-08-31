@@ -32,8 +32,6 @@ import local.oss.chronicle.data.local.PrefsRepo.Companion.VIEW_STYLES
 import local.oss.chronicle.data.local.PrefsRepo.Companion.VIEW_STYLE_COVER_GRID
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.sources.plex.model.MediaType
-import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingViewModel.Companion.PLAYBACK_SPEED_DEFAULT
-import local.oss.chronicle.injection.components.AppComponent
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -142,6 +140,9 @@ interface PrefsRepo {
     var debugOnlyDisableLocalProgressTracking: Boolean
 
     companion object {
+        /** Normal speed. Lives with the preference it defaults, so :core can read it. */
+        const val PLAYBACK_SPEED_DEFAULT = 1.0f
+
         const val KEY_SYNC_DIR_PATH = "key_sync_location"
         const val KEY_BOOK_COVER_STYLE = "key_book_cover_style"
         const val KEY_APP_OPEN_COUNT = "key_app_open_count"
@@ -250,7 +251,7 @@ class SharedPreferencesPrefsRepo
             get() = sharedPreferences.getLong(KEY_JUMP_BACKWARD_SECONDS, defaultJumpBackwardSeconds)
             set(value) = sharedPreferences.edit().putLong(KEY_JUMP_BACKWARD_SECONDS, value).apply()
 
-        private val defaultPlaybackSpeed = PLAYBACK_SPEED_DEFAULT
+        private val defaultPlaybackSpeed = PrefsRepo.PLAYBACK_SPEED_DEFAULT
         override var playbackSpeed: Float
             get() = sharedPreferences.getFloat(KEY_PLAYBACK_SPEED, defaultPlaybackSpeed)
             set(value) = sharedPreferences.edit().putFloat(KEY_PLAYBACK_SPEED, value).apply()

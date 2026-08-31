@@ -67,8 +67,8 @@ fun NowPlayingScreen(navController: NavHostController) {
     val isPlaying by viewModel.isPlaying.observeAsState(false)
     val chapterProgressString by viewModel.chapterProgressString.observeAsState("0:00")
     val chapterDurationString by viewModel.chapterDurationString.observeAsState("0:00")
-    val jumpForwardsIcon by viewModel.jumpForwardsIcon.observeAsState(R.drawable.ic_forward_30_white)
-    val jumpBackwardsIcon by viewModel.jumpBackwardsIcon.observeAsState(R.drawable.ic_replay_10_white)
+    val jumpForwardsIcon by viewModel.jumpForwardsIcon.observeAsState(local.oss.chronicle.core.R.drawable.ic_forward_30_white)
+    val jumpBackwardsIcon by viewModel.jumpBackwardsIcon.observeAsState(local.oss.chronicle.core.R.drawable.ic_replay_10_white)
     val bottomChooserState by viewModel.bottomChooserState.observeAsState()
     val hasBluetoothAudio by Injector.get().audioOutputMonitor().hasBluetoothAudio.collectAsState()
 
@@ -152,13 +152,13 @@ fun NowPlayingScreen(navController: NavHostController) {
             Row(horizontalArrangement = Arrangement.SpaceEvenly) {
                 Button(onClick = { viewModel.skipToPrevious() }) {
                     Image(
-                        painter = painterResource(R.drawable.ic_skip_previous_white),
+                        painter = painterResource(local.oss.chronicle.core.R.drawable.ic_skip_previous_white),
                         contentDescription = "Previous chapter",
                     )
                 }
                 Button(onClick = { viewModel.skipToNext() }) {
                     Image(
-                        painter = painterResource(R.drawable.ic_skip_next_white),
+                        painter = painterResource(local.oss.chronicle.core.R.drawable.ic_skip_next_white),
                         contentDescription = "Next chapter",
                     )
                 }

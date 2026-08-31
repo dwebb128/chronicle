@@ -17,7 +17,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import dagger.Module
 import dagger.Provides
 import kotlinx.coroutines.CompletableJob
-import local.oss.chronicle.application.MainActivity
+import local.oss.chronicle.application.LaunchFlags
 import local.oss.chronicle.data.sources.plex.APP_NAME
 import local.oss.chronicle.data.sources.plex.PlexHttpDataSourceFactory
 import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
@@ -95,10 +95,10 @@ class ServiceModule(private val service: MediaPlayerService) {
     @ServiceScope
     fun pendingIntent(): PendingIntent =
         service.packageManager.getLaunchIntentForPackage(service.packageName).let { sessionIntent ->
-            sessionIntent?.putExtra(MainActivity.FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING, true)
+            sessionIntent?.putExtra(LaunchFlags.FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING, true)
             PendingIntent.getActivity(
                 service,
-                MainActivity.REQUEST_CODE_OPEN_APP_TO_CURRENTLY_PLAYING,
+                LaunchFlags.REQUEST_CODE_OPEN_APP_TO_CURRENTLY_PLAYING,
                 sessionIntent,
                 PendingIntent.FLAG_IMMUTABLE,
             )

@@ -488,7 +488,7 @@ class CurrentlyPlayingViewModel(
                         val toast =
                             Toast.makeText(
                                 Injector.get().applicationContext(),
-                                R.string.skip_forwards_reached_last_chapter,
+                                local.oss.chronicle.core.R.string.skip_forwards_reached_last_chapter,
                                 Toast.LENGTH_LONG,
                             )
                         toast.setGravity(Gravity.BOTTOM, 0, 200)
@@ -510,25 +510,25 @@ class CurrentlyPlayingViewModel(
 
     fun makeJumpForwardsIcon(): Int {
         return when (prefsRepo.jumpForwardSeconds) {
-            10L -> R.drawable.ic_forward_10_white
-            15L -> R.drawable.ic_forward_15_white
-            20L -> R.drawable.ic_forward_20_white
-            30L -> R.drawable.ic_forward_30_white
-            60L -> R.drawable.ic_forward_60_white
-            90L -> R.drawable.ic_forward_90_white
-            else -> R.drawable.ic_forward_30_white
+            10L -> local.oss.chronicle.core.R.drawable.ic_forward_10_white
+            15L -> local.oss.chronicle.core.R.drawable.ic_forward_15_white
+            20L -> local.oss.chronicle.core.R.drawable.ic_forward_20_white
+            30L -> local.oss.chronicle.core.R.drawable.ic_forward_30_white
+            60L -> local.oss.chronicle.core.R.drawable.ic_forward_60_white
+            90L -> local.oss.chronicle.core.R.drawable.ic_forward_90_white
+            else -> local.oss.chronicle.core.R.drawable.ic_forward_30_white
         }
     }
 
     fun makeJumpBackwardsIcon(): Int {
         return when (prefsRepo.jumpBackwardSeconds) {
-            10L -> R.drawable.ic_replay_10_white
-            15L -> R.drawable.ic_replay_15_white
-            20L -> R.drawable.ic_replay_20_white
-            30L -> R.drawable.ic_replay_30_white
-            60L -> R.drawable.ic_replay_60_white
-            90L -> R.drawable.ic_replay_90_white
-            else -> R.drawable.ic_replay_10_white
+            10L -> local.oss.chronicle.core.R.drawable.ic_replay_10_white
+            15L -> local.oss.chronicle.core.R.drawable.ic_replay_15_white
+            20L -> local.oss.chronicle.core.R.drawable.ic_replay_20_white
+            30L -> local.oss.chronicle.core.R.drawable.ic_replay_30_white
+            60L -> local.oss.chronicle.core.R.drawable.ic_replay_60_white
+            90L -> local.oss.chronicle.core.R.drawable.ic_replay_90_white
+            else -> local.oss.chronicle.core.R.drawable.ic_replay_10_white
         }
     }
 
@@ -884,7 +884,7 @@ class CurrentlyPlayingViewModel(
     companion object {
         /** Minimal and maximal allowed playback speed. */
         const val PLAYBACK_SPEED_MIN = 0.5f
-        const val PLAYBACK_SPEED_DEFAULT = 1.0f
+        const val PLAYBACK_SPEED_DEFAULT = PrefsRepo.PLAYBACK_SPEED_DEFAULT
         const val PLAYBACK_SPEED_MAX = 3.0f
     }
 }

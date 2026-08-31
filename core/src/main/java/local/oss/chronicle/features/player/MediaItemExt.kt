@@ -6,6 +6,7 @@ import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
 import android.support.v4.media.MediaDescriptionCompat
 import androidx.annotation.DrawableRes
+import local.oss.chronicle.application.Injector
 import local.oss.chronicle.core.BuildConfig
 import local.oss.chronicle.data.sources.plex.CONTENT_STYLE_LIST_ITEM_HINT_VALUE
 import local.oss.chronicle.data.sources.plex.CONTENT_STYLE_PLAYABLE_HINT
@@ -36,7 +37,7 @@ fun makeMessageItem(
             .setTitle(title)
             .setSubtitle(subtitle)
             .setIconUri(
-                Uri.parse("android.resource://${BuildConfig.APPLICATION_ID}/$iconRes"),
+                Uri.parse("android.resource://${Injector.get().applicationContext().packageName}/$iconRes"),
             )
             .setMediaId(mediaId)
             .setExtras(extras)
