@@ -1,8 +1,9 @@
 # Running the phone and watch apps in emulators on Ubuntu
 
-A start-to-finish setup for running both Chronicle apps in Android emulators on Ubuntu, without
-Android Studio. Everything here was checked against **Ubuntu 24.04 LTS**; the only differences on
-22.04 are called out where they matter.
+A start-to-finish setup for running both Chronicle apps in Android emulators on Ubuntu. Covers the
+command-line SDK tools end to end, and [§2a](#2a-using-android-studio-instead) covers Android
+Studio, which is the easier route once KVM is working. Everything here was checked against
+**Ubuntu 24.04 LTS**; the only differences on 22.04 are called out where they matter.
 
 | App | Module | Emulator you need |
 | --- | --- | --- |
@@ -60,6 +61,63 @@ Two things worth knowing:
 - The Android emulator **bundles its own QEMU**, so strictly it only needs `/dev/kvm` access, not
   the distro's QEMU. Installing `qemu-system-x86` is still the simplest way to pull in the KVM
   plumbing and is harmless.
+
+## 2a. Using Android Studio instead
+
+Android Studio is the easier route, and it replaces most of what follows: it can install the SDK,
+download system images and create AVDs through its own UI, so **§4, §5 and §6 become optional**.
+Everything from §8 onwards (boot flags, `ANDROID_SERIAL`, `10.0.2.2`, the troubleshooting table)
+still applies, because Studio drives the same `emulator` binary underneath.
+
+**What Studio does not do for you is §1 and §2.** It cannot grant your user access to `/dev/kvm`. If
+you skip the KVM setup, Studio's emulator fails the same way the command line one does — so do those
+two sections first regardless.
+
+### Installing Studio on Ubuntu
+
+Download the Linux tarball from [developer.android.com/studio](https://developer.android.com/studio)
+and extract it, then run `bin/studio.sh`:
+
+```bash
+tar -xzf android-studio-*-linux.tar.gz -C "$HOME"
+"$HOME/android-studio/bin/studio.sh"
+```
+
+The tarball (or JetBrains Toolbox) is the path of least resistance. There is a Studio snap, but snap
+confinement complicates SDK paths and device access, which is exactly the area you are already
+fighting on Linux.
+
+> **Use a current Studio.** This project builds with **AGP 9.2.1** on **Gradle 9.4.1**, which needs a
+> correspondingly recent Studio. An older one will not open the project cleanly — and if it offers
+> to "upgrade" or downgrade the Android Gradle Plugin to match itself, **decline**. Accepting
+> rewrites the build files to a version the project is not on. Update Studio instead.
+
+### Opening and running
+
+1. **Open** the repository directory (not a subdirectory) and let the Gradle sync finish. Studio
+   reads the same `gradle/libs.versions.toml` the command line does, so no extra configuration is
+   needed.
+2. **SDK Manager** → install platform 36 and build-tools 36.0.0 if the sync asks for them.
+3. **Device Manager → Add a device** → create two virtual devices:
+   - a **Pixel** phone profile on a system image of **API 30 or newer**;
+   - a **Wear OS** profile on **API 34 or newer**.
+4. Pick the module and the device from the toolbar, then Run.
+
+Studio's Device Manager carries a longer, more current device list than the command-line tools do —
+including named **Pixel Watch** profiles and newer Pixel phones. If you want a Wear OS 6 (API 36)
+watch image, this is the way to get one: it handles the image/profile tag pairing that
+`avdmanager` is awkward about (see the note in §5).
+
+> **The run dropdown is confusing here, so read this twice.** The module named **`app` is the watch
+> app**; **`mobile` is the phone app**. It kept the name `app` so the Play publishing and CI paths
+> did not have to move. Running `app` on a phone emulator, or `mobile` on a watch emulator, will
+> "work" in the sense that it installs and launches — and then looks wrong, because you are running
+> a UI built for the other form factor.
+
+Because both apps share the applicationId `local.oss.chronicle`, Studio will silently replace one
+with the other if you run them on the same device. Keep one emulator per app.
+
+`:core` is a library module, so it has no run configuration of its own — that is expected.
 
 ## 3. Install the JDK and the libraries the emulator needs
 
