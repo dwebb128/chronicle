@@ -168,6 +168,9 @@ adb -s <device> logcat --pid=$(adb -s <device> shell pidof -s local.oss.chronicl
 
 ## 5a. Running in an emulator
 
+> **On Ubuntu?** [`EMULATOR-UBUNTU.md`](EMULATOR-UBUNTU.md) is a start-to-finish setup for
+> Ubuntu 22.04/24.04 — KVM, the exact apt packages, both AVDs and a troubleshooting table.
+
 An emulator is the quickest way to try either app without owning the hardware. Both are x86_64
 images, so they need **hardware virtualisation** — KVM on Linux, Hypervisor.framework on macOS,
 WHPX/Hyper-V on Windows. On a machine without it (most CI runners, containers and VMs) the

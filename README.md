@@ -41,7 +41,8 @@ For more screenshots and information, visit [www.chronicleapp.net](https://www.c
 ### Installing from source
 
 See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build both apps and sideload them onto a
-Pixel phone and a Pixel Watch (or their emulators).
+Pixel phone and a Pixel Watch (or their emulators). On Ubuntu,
+[docs/EMULATOR-UBUNTU.md](docs/EMULATOR-UBUNTU.md) sets up both emulators from scratch.
 
 ### Reporting Bugs
 
