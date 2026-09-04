@@ -166,14 +166,100 @@ Watch the logs of either with:
 adb -s <device> logcat --pid=$(adb -s <device> shell pidof -s local.oss.chronicle)
 ```
 
-### Emulators
+## 5a. Running in an emulator
 
-- **Phone:** any Pixel AVD on API 30+.
-- **Watch:** a **Wear OS** AVD on **API 34 or newer** — an older watch image rejects the APK with
-  `INSTALL_FAILED_OLDER_SDK`. In Android Studio: **Device Manager → Add a device → Wear OS**.
+An emulator is the quickest way to try either app without owning the hardware. Both are x86_64
+images, so they need **hardware virtualisation** — KVM on Linux, Hypervisor.framework on macOS,
+WHPX/Hyper-V on Windows. On a machine without it (most CI runners, containers and VMs) the
+emulator either refuses to start or falls back to software rendering that is too slow to be
+usable. Check on Linux with `ls /dev/kvm`.
 
-With one emulator running, `./gradlew :mobile:installDebug` or `:app:installDebug` builds and
-installs in a single step.
+### From Android Studio
+
+**Device Manager → Add a device**, then:
+
+- **Phone:** any Pixel profile with a system image of **API 30 or newer**.
+- **Watch:** the **Wear OS** category, with a system image of **API 34 or newer** — the watch app
+  sets `minSdk = 34`, so an older image rejects the APK with `INSTALL_FAILED_OLDER_SDK`.
+
+Pick the module from the run-configuration dropdown (`mobile` or `app`) and press Run.
+
+### From the command line
+
+Install the emulator and a system image. These IDs are current:
+
+```bash
+export ANDROID_HOME="$HOME/android-sdk"
+SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+# Phone — API 36 matches compileSdk/targetSdk; anything from API 30 up will run the app
+"$SDKMANAGER" --sdk_root="$ANDROID_HOME" "emulator" \
+  "system-images;android-36;google_apis;x86_64"
+
+# Watch — API 34 is the lowest the watch app accepts
+"$SDKMANAGER" --sdk_root="$ANDROID_HOME" "emulator" \
+  "system-images;android-34;android-wear;x86_64"
+```
+
+On an Apple Silicon Mac substitute `arm64-v8a` for `x86_64` in both image IDs.
+
+Create the virtual devices:
+
+```bash
+AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+
+"$AVDMANAGER" create avd -n chronicle-phone \
+  -k "system-images;android-36;google_apis;x86_64" -d pixel_7
+
+"$AVDMANAGER" create avd -n chronicle-watch \
+  -k "system-images;android-34;android-wear;x86_64" -d wearos_small_round
+```
+
+Run `"$AVDMANAGER" list device` to see the other device profiles.
+
+Boot one (each call blocks, so use a separate terminal or background it):
+
+```bash
+"$ANDROID_HOME/emulator/emulator" -avd chronicle-phone &
+"$ANDROID_HOME/emulator/emulator" -avd chronicle-watch &
+```
+
+Useful flags: `-no-snapshot-load` for a cold boot, `-wipe-data` to reset to a clean install, and
+`-no-window` for a headless run (fine for install and `logcat`, no use for looking at the UI).
+
+Wait for the device to finish booting, then install:
+
+```bash
+adb wait-for-device
+adb devices                      # emulator-5554, emulator-5556, ...
+
+./gradlew :mobile:installDebug   # phone emulator
+./gradlew :app:installDebug      # watch emulator
+```
+
+`installDebug` builds and installs in one step. With **both** emulators running, `adb` cannot
+guess which you mean, so name the target — `installDebug` reads `ANDROID_SERIAL`:
+
+```bash
+ANDROID_SERIAL=emulator-5554 ./gradlew :mobile:installDebug
+ANDROID_SERIAL=emulator-5556 ./gradlew :app:installDebug
+```
+
+Launch without touching the UI:
+
+```bash
+adb -s emulator-5554 shell am start -n local.oss.chronicle/.application.MainActivity
+```
+
+### Signing in on an emulator
+
+Both apps use the plex.tv/link code flow, which needs no browser on the device — read the code off
+the emulator screen and enter it at [plex.tv/link](https://plex.tv/link) on your own machine.
+
+The emulator reaches your host at **10.0.2.2**, not `localhost`. A Plex server running on the same
+machine as the emulator is therefore `http://10.0.2.2:32400`, and a server elsewhere on your LAN
+works by its normal address. Plex account sign-in needs the emulator to have working internet,
+which it inherits from the host.
 
 ---
 
