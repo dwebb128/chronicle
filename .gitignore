@@ -9,9 +9,9 @@ captures/
 bin/
 gen/
 target/
-app/freeAsInBeer
-app/googlePlay
-app/release
+wear/freeAsInBeer
+wear/googlePlay
+wear/release
 plans/
 
 # android studio files

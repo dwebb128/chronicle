@@ -5,13 +5,13 @@ This branch builds **two apps** from one source tree:
 | App | Gradle module | APK | `minSdk` | Target device |
 | --- | --- | --- | --- | --- |
 | Phone | `:mobile` | `mobile/build/outputs/apk/debug/mobile-debug.apk` | 30 (Android 11) | Pixel phone |
-| Watch | `:app` | `app/build/outputs/apk/debug/app-debug.apk` | 34 (Android 14) | Pixel Watch |
+| Watch | `:wear` | `wear/build/outputs/apk/debug/wear-debug.apk` | 34 (Android 14) | Pixel Watch |
 
 Both sit on `:core`, a library module holding the Plex API client, the Room databases and the
 playback service. The watch app is standalone — once it is signed in it needs no phone.
 
-> The module named `:app` is the **watch** app. It kept that name so the Play publishing config,
-> signing paths and CI artifact paths did not have to change; `:mobile` is the phone app.
+> The modules are named for the form factor they target: `:wear` is the watch app, `:mobile` is the
+> phone app. (`:wear` was called `:app` until recently — older notes and branches may still say so.)
 
 Both APKs share the applicationId `local.oss.chronicle`, which is what lets Play treat them as one
 listing and deliver the right one to each form factor. It also means **a single device can only
@@ -79,7 +79,7 @@ cd chronicle
 ```bash
 ./gradlew assembleDebug          # both APKs
 ./gradlew :mobile:assembleDebug  # phone only
-./gradlew :app:assembleDebug     # watch only
+./gradlew :wear:assembleDebug     # watch only
 ```
 
 For optimised builds use `assembleRelease`. Release builds are signed from `keystore.properties`
@@ -131,7 +131,7 @@ tap **Build number** seven times.
 ```bash
 adb connect <watch-ip>:5555
 adb devices                       # accept "Always allow from this computer" on the watch
-adb -s <watch-ip>:5555 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s <watch-ip>:5555 install -r wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
 If more than one device is attached, `-s <watch-ip>:5555` is what keeps the watch APK off your
@@ -153,7 +153,7 @@ adb devices
 # 192.168.1.42:5555   device      <- watch
 
 adb -s 1A2B3C4D5E6F      install -r mobile/build/outputs/apk/debug/mobile-debug.apk
-adb -s 192.168.1.42:5555 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s 192.168.1.42:5555 install -r wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
 Both apps sign in with the **plex.tv/link** short code: the app shows a code, you enter it at
@@ -185,7 +185,7 @@ usable. Check on Linux with `ls /dev/kvm`.
 - **Watch:** the **Wear OS** category, with a system image of **API 34 or newer** — the watch app
   sets `minSdk = 34`, so an older image rejects the APK with `INSTALL_FAILED_OLDER_SDK`.
 
-Pick the module from the run-configuration dropdown (`mobile` or `app`) and press Run.
+Pick the module from the run-configuration dropdown (`mobile` or `wear`) and press Run.
 
 ### From the command line
 
@@ -237,7 +237,7 @@ adb wait-for-device
 adb devices                      # emulator-5554, emulator-5556, ...
 
 ./gradlew :mobile:installDebug   # phone emulator
-./gradlew :app:installDebug      # watch emulator
+./gradlew :wear:installDebug      # watch emulator
 ```
 
 `installDebug` builds and installs in one step. With **both** emulators running, `adb` cannot
@@ -245,7 +245,7 @@ guess which you mean, so name the target — `installDebug` reads `ANDROID_SERIA
 
 ```bash
 ANDROID_SERIAL=emulator-5554 ./gradlew :mobile:installDebug
-ANDROID_SERIAL=emulator-5556 ./gradlew :app:installDebug
+ANDROID_SERIAL=emulator-5556 ./gradlew :wear:installDebug
 ```
 
 Launch without touching the UI:
@@ -271,7 +271,7 @@ which it inherits from the host.
 The checks CI runs (`.github/workflows/ci.yml`) are:
 
 ```bash
-./gradlew testDebugUnitTest   # unit tests across :core, :app and :mobile
+./gradlew testDebugUnitTest   # unit tests across :core, :wear and :mobile
 ./gradlew assembleDebug       # both debug APKs
 ```
 

@@ -8,7 +8,7 @@ Studio, which is the easier route once KVM is working. Everything here was check
 | App | Module | Emulator you need |
 | --- | --- | --- |
 | Phone | `:mobile` | A Pixel AVD, API 30 or newer |
-| Watch | `:app` | A Wear OS AVD, **API 34 or newer** |
+| Watch | `:wear` | A Wear OS AVD, **API 34 or newer** |
 
 The watch app sets `minSdk = 34`, so an older watch image rejects its APK with
 `INSTALL_FAILED_OLDER_SDK`. The phone app sets `minSdk = 30`.
@@ -108,11 +108,10 @@ including named **Pixel Watch** profiles and newer Pixel phones. If you want a W
 watch image, this is the way to get one: it handles the image/profile tag pairing that
 `avdmanager` is awkward about (see the note in §5).
 
-> **The run dropdown is confusing here, so read this twice.** The module named **`app` is the watch
-> app**; **`mobile` is the phone app**. It kept the name `app` so the Play publishing and CI paths
-> did not have to move. Running `app` on a phone emulator, or `mobile` on a watch emulator, will
-> "work" in the sense that it installs and launches — and then looks wrong, because you are running
-> a UI built for the other form factor.
+> **Pick the right module in the run dropdown.** **`wear` is the watch app**; **`mobile` is the
+> phone app**. Running `wear` on a phone emulator, or `mobile` on a watch emulator, will "work" in
+> the sense that it installs and launches — and then looks wrong, because you are running a UI
+> built for the other form factor.
 
 Because both apps share the applicationId `local.oss.chronicle`, Studio will silently replace one
 with the other if you run them on the same device. Keep one emulator per app.
@@ -292,7 +291,7 @@ From the repository root:
 
 ```bash
 ./gradlew :mobile:installDebug   # phone
-./gradlew :app:installDebug      # watch
+./gradlew :wear:installDebug      # watch
 ```
 
 `installDebug` builds and installs in one step.
@@ -302,7 +301,7 @@ With **both** emulators running, `adb` cannot guess which one you mean and the i
 
 ```bash
 ANDROID_SERIAL=emulator-5554 ./gradlew :mobile:installDebug
-ANDROID_SERIAL=emulator-5556 ./gradlew :app:installDebug
+ANDROID_SERIAL=emulator-5556 ./gradlew :wear:installDebug
 ```
 
 Both apps share the applicationId `local.oss.chronicle`, so **one device can only hold one of

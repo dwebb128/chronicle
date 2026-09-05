@@ -21,8 +21,8 @@ tasks.register<Copy>("installGitHook") {
     into(rootProject.file(".git/hooks"))
 }
 
-// Ensure the app preBuild depends on the git hook installer. Use matching/configureEach to avoid
+// Ensure the watch app preBuild depends on the git hook installer. Use matching/configureEach to avoid
 // deprecated fileCollection/spec usage that can appear with getByPath on newer Gradle.
-tasks.matching { it.path == ":app:preBuild" }.configureEach {
+tasks.matching { it.path == ":wear:preBuild" }.configureEach {
     dependsOn(rootProject.tasks.named("installGitHook"))
 }

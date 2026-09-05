@@ -15,7 +15,7 @@ no phone required once it's set up.
 | App | Gradle module | Runs on |
 | --- | --- | --- |
 | Phone | `:mobile` | Android 11+ (API 30) |
-| Watch | `:app` | Wear OS 4+ (API 34), standalone |
+| Watch | `:wear` | Wear OS 4+ (API 34), standalone |
 
 Both are built from the shared `:core` module, which holds the Plex API client, the Room
 databases and the playback service.
