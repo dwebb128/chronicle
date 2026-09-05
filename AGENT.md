@@ -125,7 +125,6 @@ wear/src/main/java/local/oss/chronicle/
 ├── ui/                     # Compose for Wear OS presentation layer
 │   ├── ChronicleWearApp.kt    # Root composable: Scaffold + SwipeDismissableNavHost
 │   ├── Nav.kt                 # Route constants
-│   ├── RotaryScroll.kt         # rotaryScrollable() modifier
 │   ├── theme/Theme.kt
 │   ├── components/            # BookRow, ChapterRow, LoadingScreen, ErrorScreen,
 │   │                          # NowPlayingChip, OptionsDialog
@@ -413,7 +412,7 @@ complex flows.
    - Read the ViewModel's `LiveData` with `observeAsState()`
    - Wrap list content in `androidx.wear.compose.foundation.lazy.ScalingLazyColumn` (not
      `compose-material` — see [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md)),
-     with `Modifier.rotaryScrollable(listState)` and a `PositionIndicator`
+     and a `PositionIndicator`; `ScalingLazyColumn` handles rotary input itself
    - Reuse [`ui/components/`](wear/src/main/java/local/oss/chronicle/ui/components/) (`LoadingScreen`,
      `ErrorScreen`, `OptionsDialog`, etc.) rather than duplicating their patterns
 

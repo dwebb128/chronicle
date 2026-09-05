@@ -25,7 +25,6 @@ import local.oss.chronicle.ui.Nav
 import local.oss.chronicle.ui.components.BookRow
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.components.NowPlayingChip
-import local.oss.chronicle.ui.rotaryScrollable
 
 /**
  * The library list. [LibraryViewModel]'s dependencies (PLAN.md section 4) are all
@@ -63,7 +62,7 @@ fun LibraryScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+            modifier = Modifier.fillMaxSize(),
         ) {
             item {
                 NowPlayingChip(navController = navController)

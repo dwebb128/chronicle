@@ -15,7 +15,6 @@ architecture.
 ui/
 ├── ChronicleWearApp.kt      # Root composable: Scaffold + SwipeDismissableNavHost + login-state routing
 ├── Nav.kt                   # Route constants
-├── RotaryScroll.kt          # Modifier.rotaryScrollable() — wires rotary input to ScalingLazyListState
 ├── theme/
 │   └── Theme.kt              # ChronicleTheme — Wear Compose Colors seeded from colors.xml
 ├── components/
@@ -104,13 +103,13 @@ rows via the shared `ChapterRow` component. Defers creating `AudiobookDetailsVie
 until then), and uses `viewModel(key = bookId, factory = ...)` so navigating from one book to
 another gets a fresh ViewModel rather than the previous book's cached instance.
 
-**`NowPlayingScreen`** — the transport-controls screen: title/chapter/progress `Text`, a
-play/pause + skip-forward/back `Button` row, a previous/next-chapter `Button` row, and
-`CompactChip`s to `playback_speed` and `sleep_timer`. `CurrentlyPlayingViewModel` here is
-Activity-scoped (passed the host `ComponentActivity` as `viewModelStoreOwner`) so this screen and
-`NowPlayingChip` share the exact same ViewModel instance. This is also the one screen where rotary
-input is wired to system volume rather than list scroll — see
-[`docs/architecture/wear-platform.md`](../architecture/wear-platform.md).
+**`NowPlayingScreen`** — the transport-controls screen, as a `ScalingLazyColumn`: title/chapter/
+progress `Text`, a play/pause + skip-forward/back `Button` row, a previous/next-chapter `Button`
+row, a volume `InlineSlider`, and full-width `CompactChip`s to `playback_speed`, `sleep_timer` and
+the system audio-output picker. It scrolls because those controls total far more than the ~200dp a
+41mm round display offers; the crown scrolls it, and volume is the slider rather than the crown.
+`CurrentlyPlayingViewModel` here is Activity-scoped (passed the host `ComponentActivity` as
+`viewModelStoreOwner`) so this screen and `NowPlayingChip` share the exact same ViewModel instance.
 
 **`PlaybackSpeedScreen`** — replaces the phone's `ModalBottomSheetSpeedChooser` bottom sheet with a
 Wear Compose `Picker` offering 0.1x-stepped speeds across
@@ -118,8 +117,9 @@ Wear Compose `Picker` offering 0.1x-stepped speeds across
 `setPlaybackSpeed()` immediately (no separate confirm step).
 
 **`SleepTimerScreen`** — a `Picker` over a fixed list of preset minute values
-(5/15/30/40/60/90/120) with a "Start" `Button`, or — when a timer is already running — a countdown
-`Text` and a cancel `Button`. Uses `CurrentlyPlayingViewModel.beginSleepTimer()`/
+(5/15/30/40/60/90/120) with a "Start" `CompactChip`, or — when a timer is already running — a
+countdown `Text` and a cancel `CompactChip`. The picker takes whatever height is left over rather
+than a fixed one, so the confirm chip stays on screen on a 41mm watch. Uses `CurrentlyPlayingViewModel.beginSleepTimer()`/
 `cancelSleepTimer()`, added in this conversion; the older `showSleepTimerOptions()`/
 `BottomChooserState` path on the same ViewModel is left in place but unused by this screen.
 

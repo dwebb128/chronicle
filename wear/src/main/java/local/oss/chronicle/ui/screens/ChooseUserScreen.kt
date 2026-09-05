@@ -23,6 +23,7 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.CompactChip
+import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
@@ -31,7 +32,6 @@ import local.oss.chronicle.features.login.ChooseUserViewModel
 import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.components.ErrorScreen
 import local.oss.chronicle.ui.components.LoadingScreen
-import local.oss.chronicle.ui.rotaryScrollable
 
 /** Wear's minimum comfortable touch target; CompactChip is shorter than this by default. */
 private val KEYPAD_KEY_MIN_TOUCH_TARGET = 48.dp
@@ -63,16 +63,28 @@ fun ChooseUserScreen(navController: NavHostController) {
             Box(modifier = Modifier.fillMaxSize()) {
                 ScalingLazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     item {
-                        Text(text = stringResource(R.string.choose_user), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        ListHeader {
+                            Text(
+                                text = stringResource(R.string.choose_user),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     items(users) { user ->
                         Chip(
                             onClick = { viewModel.pickUser(user) },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text(text = user.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            label = {
+                                Text(
+                                    text = user.title,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
                         )
                     }
                 }
@@ -105,7 +117,7 @@ private fun PinEntryScreen(viewModel: ChooseUserViewModel) {
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+            modifier = Modifier.fillMaxSize(),
         ) {
             item {
                 Text(text = "${stringResource(R.string.pin)}: ${"•".repeat(pin.length)}")

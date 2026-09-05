@@ -284,9 +284,9 @@ class CurrentlyPlayingViewModel(
             chapters,
             tracks,
         ) { _chapters: List<Chapter>?, _tracks: List<MediaItemTrack>? ->
-            Timber.i("Cached chapters: $_chapters")
-            Timber.i("Cached progress: ${_tracks?.getProgress()}")
-
+            // Deliberately not logged: this recomputes on every track-progress write (roughly
+            // every three seconds while playing), and interpolating the chapter list into a
+            // message built a multi-kilobyte string each time whether or not a tree was planted.
             if (!_tracks.isNullOrEmpty() && !_chapters.isNullOrEmpty()) {
                 val activeTrack = _tracks.getActiveTrack()
                 _chapters.getChapterAt(activeTrack.id, activeTrack.progress)
@@ -299,7 +299,6 @@ class CurrentlyPlayingViewModel(
         currentlyPlaying.chapter.combine(
             cachedChapter,
         ) { activeChapter: Chapter, cachedChapter: Chapter ->
-            Timber.i("Cached: $cachedChapter, active: $activeChapter")
             if (activeChapter != EMPTY_CHAPTER && activeChapter.trackId == cachedChapter.trackId) {
                 activeChapter
             } else {

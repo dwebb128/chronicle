@@ -35,21 +35,16 @@ never returns to a login step the user has already completed. See
 
 ## Rotary input (crown / bezel)
 
-Two different uses of the rotating crown/bezel exist, both hand-rolled against plain Compose UI's
-`Modifier.onRotaryScrollEvent` (chosen over a Wear-Compose-specific rotary helper because it is the
-API this conversion could be most confident is present at the pinned Compose UI version — see
-[`ui/RotaryScroll.kt`](../../app/src/main/java/local/oss/chronicle/ui/RotaryScroll.kt)):
+The crown scrolls, on every screen. Nothing in this app wires rotary input by hand: since
+wear-compose-foundation 1.4 `ScalingLazyColumn`'s `rotaryScrollableBehavior` parameter defaults to
+`RotaryScrollableDefaults.behavior(state)`, so a `ScalingLazyColumn` given a `ScalingLazyListState`
+already handles the crown — with fling and haptics — and already requests the focus that rotary
+events are delivered to. A hand-rolled `Modifier.onRotaryScrollEvent` on top of that is not just
+redundant, it fights the built-in one for focus.
 
-- **List scroll.** Every list screen (`LibraryScreen`, `BookDetailsScreen`'s chapter list,
-  `ChooseUserScreen`/`ChooseServerScreen`/`ChooseLibraryScreen`, `SettingsScreen`) uses a
-  `ScalingLazyColumn` whose `ScalingLazyListState` is wired to rotary input via the
-  `Modifier.rotaryScrollable(state)` extension in `RotaryScroll.kt`, and to a `PositionIndicator`
-  for the scrollbar-equivalent visual.
-- **Volume on Now Playing.** `NowPlayingScreen` deliberately does **not** use
-  `rotaryScrollable` (it has no scrolling list). Instead it wires `onRotaryScrollEvent` directly to
-  `AudioManager.adjustStreamVolume(STREAM_MUSIC, ADJUST_RAISE/ADJUST_LOWER, FLAG_SHOW_UI)`, so
-  turning the crown while looking at the now-playing screen changes system media volume rather
-  than scrolling anything.
+`NowPlayingScreen` used to spend the crown on media volume instead, on the grounds that it had no
+scrolling list. It has one now — its controls are far taller than a 41mm display — so the crown
+scrolls there too, and volume lives on the on-screen `InlineSlider`.
 
 ## `ScalingLazyColumn` / `PositionIndicator`
 

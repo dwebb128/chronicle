@@ -195,7 +195,8 @@ class LibraryViewModelTest {
             val allBooksLiveData = MutableLiveData(testBooks)
             val searchResultsLiveData =
                 MutableLiveData(
-                    listOf(testBooks[0]), // Book from Library A
+                    // Book from Library A
+                    listOf(testBooks[0]),
                 )
             `when`(bookRepository.getAllBooks()).thenReturn(allBooksLiveData)
             `when`(bookRepository.search(anyString())).thenReturn(searchResultsLiveData)

@@ -248,8 +248,6 @@ class LibraryViewModel(
         }
     }
 
-
-
     fun disableOfflineMode() {
         prefsRepo.offlineMode = false
     }

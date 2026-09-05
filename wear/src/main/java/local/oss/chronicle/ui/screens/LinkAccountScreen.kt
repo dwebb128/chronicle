@@ -1,9 +1,8 @@
 package local.oss.chronicle.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -12,16 +11,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.wear.compose.material.Button
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.MaterialTheme
+import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
 import local.oss.chronicle.features.auth.PlexAuthState
@@ -95,29 +95,46 @@ fun LinkAccountScreen(navController: NavHostController) {
     }
 }
 
+/**
+ * A list rather than a centred column: the code, the instructions and the cancel action together
+ * are taller than a 41mm round display, so a column clipped the instructions behind the bezel. The
+ * code leads so it is the thing on screen when the list opens centred on its first item.
+ */
 @Composable
 private fun LinkCode(
     code: String?,
     onCancel: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.link_account_instructions),
-            textAlign = TextAlign.Center,
-            maxLines = 4,
-        )
-        Text(
-            text = code ?: "……",
-            style = MaterialTheme.typography.title1,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
-        Button(onClick = onCancel, modifier = Modifier.padding(top = 8.dp)) {
-            Text(text = stringResource(R.string.cancel))
+    val listState = rememberScalingLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        ScalingLazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item {
+                Text(
+                    text = code ?: "……",
+                    style = MaterialTheme.typography.title1,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
+            item {
+                Text(
+                    text = stringResource(R.string.link_account_instructions),
+                    style = MaterialTheme.typography.caption1,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            item {
+                CompactChip(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = stringResource(R.string.cancel), maxLines = 1) },
+                )
+            }
         }
+        PositionIndicator(scalingLazyListState = listState)
     }
 }

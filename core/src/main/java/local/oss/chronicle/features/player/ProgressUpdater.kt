@@ -119,17 +119,10 @@ class SimpleProgressUpdater
                         absolutePositionFromExtras
                     }
                 val isPlaying = controller.playbackState?.isPlaying != false
-                val playbackState = controller.playbackState?.state
 
-                // [ChapterDebug] Log the raw player state before updating progress
-                Timber.d(
-                    "[ChapterDebug] startRegularProgressUpdates: " +
-                        "playerPosition=$playerPosition, " +
-                        "isPlaying=$isPlaying, " +
-                        "playbackState=$playbackState, " +
-                        "trackId=${controller.metadata?.id}",
-                )
-
+                // Deliberately not logged: this block re-runs once a second for as long as the
+                // service lives, playing or not, and the concatenated message was built on every
+                // tick whether or not a Timber tree was planted to receive it.
                 if (isPlaying) {
                     serviceScope.launch(context = serviceScope.coroutineContext + Dispatchers.IO) {
                         updateProgress(

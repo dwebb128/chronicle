@@ -19,7 +19,6 @@ import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import local.oss.chronicle.ui.rotaryScrollable
 
 fun Resources.getString(fs: FormattableString?): String {
     return fs?.format(this) ?: ""
@@ -92,8 +91,7 @@ fun OptionsDialog(state: BottomChooserState) {
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colors.surface)
-                    .rotaryScrollable(listState),
+                    .background(MaterialTheme.colors.surface),
         ) {
             item {
                 Text(

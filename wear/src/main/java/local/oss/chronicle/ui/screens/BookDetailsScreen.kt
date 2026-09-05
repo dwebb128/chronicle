@@ -28,6 +28,8 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ListHeader
+import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import coil.compose.AsyncImage
@@ -43,7 +45,6 @@ import local.oss.chronicle.ui.components.ChapterRow
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.components.NowPlayingChip
 import local.oss.chronicle.ui.components.OptionsDialog
-import local.oss.chronicle.ui.rotaryScrollable
 
 /**
  * Route: `book_details/{bookId}` (never the title — titles can contain slashes, PLAN.md 5.3).
@@ -83,7 +84,6 @@ fun BookDetailsScreen(
     val activeChapter by viewModel.activeChapter.observeAsState()
     val isBookPlaying by viewModel.isBookInViewPlaying.observeAsState(false)
     val cacheStatus by viewModel.cacheStatus.observeAsState(NOT_CACHED)
-    val progressString by viewModel.progressString.observeAsState("0:00/0:00")
     val bottomChooserState by viewModel.bottomChooserState.observeAsState()
     val plexConfig = remember { Injector.get().plexConfig() }
     val thumbUri =
@@ -96,7 +96,7 @@ fun BookDetailsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+            modifier = Modifier.fillMaxSize(),
         ) {
             item {
                 NowPlayingChip(navController = navController)
@@ -112,6 +112,7 @@ fun BookDetailsScreen(
             item {
                 Text(
                     text = book?.title.orEmpty(),
+                    style = MaterialTheme.typography.title3,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -120,14 +121,14 @@ fun BookDetailsScreen(
             item {
                 Text(
                     text = book?.author.orEmpty(),
+                    style = MaterialTheme.typography.caption1,
+                    color = MaterialTheme.colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            item {
-                Text(text = progressString, textAlign = TextAlign.Center)
-            }
+            item { BookProgress(viewModel) }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -187,7 +188,7 @@ fun BookDetailsScreen(
                 )
             }
             if (chapters.isNotEmpty()) {
-                item { Text(text = stringResource(R.string.chapters)) }
+                item { ListHeader { Text(text = stringResource(R.string.chapters)) } }
             }
             items(chapters) { chapter ->
                 ChapterRow(
@@ -202,4 +203,22 @@ fun BookDetailsScreen(
         PositionIndicator(scalingLazyListState = listState)
         bottomChooserState?.let { OptionsDialog(state = it) }
     }
+}
+
+/**
+ * Its own composable so the progress readout — which re-emits every time the player writes a new
+ * position to the DB, a few times a minute while playing — invalidates one [Text] instead of
+ * [BookDetailsScreen]'s whole restart scope, which re-ran the entire `ScalingLazyColumn` content
+ * lambda and every visible row with it.
+ */
+@Composable
+private fun BookProgress(viewModel: AudiobookDetailsViewModel) {
+    val progressString by viewModel.progressString.observeAsState("0:00/0:00")
+    Text(
+        text = progressString,
+        style = MaterialTheme.typography.caption1,
+        color = MaterialTheme.colors.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+    )
 }

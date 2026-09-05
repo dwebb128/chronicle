@@ -16,6 +16,7 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
@@ -25,7 +26,6 @@ import local.oss.chronicle.features.login.ChooseLibraryViewModel
 import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.components.ErrorScreen
 import local.oss.chronicle.ui.components.LoadingScreen
-import local.oss.chronicle.ui.rotaryScrollable
 
 /**
  * Last screen in the login chain: user, then server, then library (PLAN.md 5.3).
@@ -54,16 +54,28 @@ fun ChooseLibraryScreen(navController: NavHostController) {
             Box(modifier = Modifier.fillMaxSize()) {
                 ScalingLazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     item {
-                        Text(text = stringResource(R.string.choose_library), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        ListHeader {
+                            Text(
+                                text = stringResource(R.string.choose_library),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     items(libraries) { library ->
                         Chip(
                             onClick = { plexLoginRepo.chooseLibrary(library) },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text(text = library.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            label = {
+                                Text(
+                                    text = library.name,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
                         )
                     }
                 }

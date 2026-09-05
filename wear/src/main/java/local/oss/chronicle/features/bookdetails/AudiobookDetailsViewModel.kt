@@ -268,9 +268,9 @@ class AudiobookDetailsViewModel(
             chapters,
             tracks,
         ) { _chapters: List<Chapter>?, _tracks: List<MediaItemTrack>? ->
-            Timber.i("Cached chapters: $_chapters")
-            Timber.i("Cached progress: ${_tracks?.getProgress()}")
-
+            // Deliberately not logged: this recomputes on every track-progress write (roughly
+            // every three seconds while playing), and interpolating the chapter list into a
+            // message built a multi-kilobyte string each time whether or not a tree was planted.
             if (_tracks != null && _chapters != null && _tracks.isNotEmpty()) {
                 val activeTrack = _tracks.getActiveTrack()
                 val bookProgress = _tracks.getProgress()
@@ -285,7 +285,6 @@ class AudiobookDetailsViewModel(
         currentlyPlaying.chapter.combine(
             cachedChapter,
         ) { activeChapter: Chapter, cachedChapter: Chapter ->
-            Timber.i("Cached: $cachedChapter, active: $activeChapter")
             // Prefer activeChapter from live playback if it's valid and for the same book
             // Don't check trackId because single-track audiobooks have all chapters with same trackId
             if (activeChapter != EMPTY_CHAPTER && activeChapter.bookId == cachedChapter.bookId) {

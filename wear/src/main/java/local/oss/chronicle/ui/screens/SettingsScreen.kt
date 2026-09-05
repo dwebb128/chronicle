@@ -8,21 +8,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.material.ToggleChipDefaults
 import local.oss.chronicle.R
 import local.oss.chronicle.features.settings.SettingsViewModel
 import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.components.NowPlayingChip
 import local.oss.chronicle.ui.components.OptionsDialog
-import local.oss.chronicle.ui.rotaryScrollable
 
 /**
  * Settings screen against the rewritten [SettingsViewModel] (PLAN.md 5.7). Surviving rows only:
@@ -49,7 +52,7 @@ fun SettingsScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().rotaryScrollable(listState),
+            modifier = Modifier.fillMaxSize(),
         ) {
             item { NowPlayingChip(navController = navController) }
 
@@ -64,7 +67,12 @@ fun SettingsScreen(navController: NavHostController) {
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
-                    toggleControl = { Text(text = if (offlineMode) "On" else "Off") },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.switchIcon(offlineMode),
+                            contentDescription = if (offlineMode) "On" else "Off",
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -79,7 +87,12 @@ fun SettingsScreen(navController: NavHostController) {
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
-                    toggleControl = { Text(text = if (skipSilence) "On" else "Off") },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.switchIcon(skipSilence),
+                            contentDescription = if (skipSilence) "On" else "Off",
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -94,7 +107,12 @@ fun SettingsScreen(navController: NavHostController) {
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
-                    toggleControl = { Text(text = if (autoRewind) "On" else "Off") },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.switchIcon(autoRewind),
+                            contentDescription = if (autoRewind) "On" else "Off",
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -109,7 +127,12 @@ fun SettingsScreen(navController: NavHostController) {
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
-                    toggleControl = { Text(text = if (pauseOnFocusLost) "On" else "Off") },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.switchIcon(pauseOnFocusLost),
+                            contentDescription = if (pauseOnFocusLost) "On" else "Off",
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -117,7 +140,13 @@ fun SettingsScreen(navController: NavHostController) {
                 Chip(
                     onClick = { viewModel.showJumpForwardChooser() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = stringResource(R.string.settings_jump_forward_title)) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.settings_jump_forward_title),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                     secondaryLabel = { Text(text = "${jumpForwardSeconds}s") },
                 )
             }
@@ -125,7 +154,13 @@ fun SettingsScreen(navController: NavHostController) {
                 Chip(
                     onClick = { viewModel.showJumpBackwardChooser() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = stringResource(R.string.settings_jump_backward_title)) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.settings_jump_backward_title),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                     secondaryLabel = { Text(text = "${jumpBackwardSeconds}s") },
                 )
             }
@@ -133,25 +168,50 @@ fun SettingsScreen(navController: NavHostController) {
                 Chip(
                     onClick = { viewModel.showRefreshRateChooser() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = stringResource(R.string.settings_refresh_rate_title)) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.settings_refresh_rate_title),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                 )
             }
             item {
                 Chip(
                     onClick = { viewModel.confirmDeleteDownloadedFiles() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = stringResource(R.string.settings_delete_synced_title)) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.settings_delete_synced_title),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                 )
             }
             item {
                 Chip(
                     onClick = { viewModel.confirmLogOut() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = stringResource(R.string.settings_log_out)) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.settings_log_out),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                 )
             }
             item {
-                Text(text = "${stringResource(R.string.settings_version_title)}: ${viewModel.versionName}")
+                Text(
+                    text = "${stringResource(R.string.settings_version_title)}: ${viewModel.versionName}",
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         PositionIndicator(scalingLazyListState = listState)
