@@ -1,0 +1,507 @@
+package local.oss.chronicle.data.sources.plex
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.work.*
+import com.tonyodev.fetch2.*
+import com.tonyodev.fetch2core.DownloadBlock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import local.oss.chronicle.core.BuildConfig
+import local.oss.chronicle.application.Injector
+import local.oss.chronicle.data.local.IBookRepository
+import local.oss.chronicle.data.local.ITrackRepository
+import local.oss.chronicle.data.local.PrefsRepo
+import local.oss.chronicle.data.model.Audiobook
+import local.oss.chronicle.data.model.MediaItemTrack
+import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
+import local.oss.chronicle.features.download.DownloadNotificationWorker
+import local.oss.chronicle.features.download.FetchGroupStartFinishListener
+import local.oss.chronicle.util.ScopedCoroutineManager
+import local.oss.chronicle.util.bytesAvailable
+import timber.log.Timber
+import java.io.File
+import java.io.FileFilter
+import javax.inject.Inject
+
+interface ICachedFileManager {
+    enum class CacheStatus { CACHED, CACHING, NOT_CACHED }
+
+    val activeBookDownloads: LiveData<Set<String>>
+
+    fun cancelCaching()
+
+    fun cancelGroup(id: String)
+
+    fun downloadTracks(
+        bookId: String,
+        bookTitle: String,
+    )
+
+    suspend fun uncacheAllInLibrary(): Int
+
+    suspend fun deleteCachedBook(bookId: String)
+
+    suspend fun hasUserCachedTracks(): Boolean
+
+    suspend fun refreshTrackDownloadedStatus()
+}
+
+interface SimpleSet<T> {
+    fun add(elem: T): Boolean
+
+    fun remove(elem: T): Boolean
+
+    operator fun contains(elem: T): Boolean
+
+    val size: Int
+}
+
+class CachedFileManager
+    @Inject
+    constructor(
+        private val fetch: Fetch,
+        private val prefsRepo: PrefsRepo,
+        private val trackRepository: ITrackRepository,
+        private val bookRepository: IBookRepository,
+        private val plexConfig: PlexConfig,
+        private val applicationContext: Context,
+    ) : ICachedFileManager {
+        private val externalFileDirs = Injector.get().externalDeviceDirs()
+
+        private val scopeManager = ScopedCoroutineManager()
+
+        private val downloadListener =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    when (intent?.action) {
+                        DownloadNotificationWorker.ACTION_CANCEL_ALL_DOWNLOADS ->
+                            Injector.get().fetch()
+                                .cancelAll()
+                        DownloadNotificationWorker.ACTION_CANCEL_BOOK_DOWNLOAD -> {
+                            val bookId =
+                                intent.getStringExtra(DownloadNotificationWorker.KEY_BOOK_ID)
+                            if (bookId != null) {
+                                Timber.i("Cancelling book: $bookId")
+                                // Extract numeric ID for Fetch group
+                                val numericId = bookId.removePrefix("plex:").toIntOrNull() ?: return
+                                Injector.get().fetch().cancelGroup(numericId)
+                            }
+                        }
+                    }
+                }
+            }
+
+        override fun cancelGroup(id: String) {
+            // Extract numeric ID for Fetch group
+            val numericId = id.removePrefix("plex:").toIntOrNull() ?: return
+            fetch.cancelGroup(numericId)
+        }
+
+        override fun cancelCaching() {
+            fetch.cancelAll()
+        }
+
+        override suspend fun hasUserCachedTracks(): Boolean {
+            return withContext(Dispatchers.IO) {
+                trackRepository.getCachedTracks().isNotEmpty()
+            }
+        }
+
+        override fun downloadTracks(
+            bookId: String,
+            bookTitle: String,
+        ) {
+            // Add downloads to Fetch
+            scopeManager.launchSafe(
+                tag = "download-book-$bookId",
+                onError = { error ->
+                    Timber.e("Failed to download book $bookId: ${error.message}")
+                },
+            ) {
+                if (!hasEnoughSpaceForBook(bookId)) {
+                    return@launchSafe
+                }
+                fetch.enqueue(makeRequests(bookId, bookTitle)) {
+                    val errors =
+                        it.mapNotNull { (_, error) ->
+                            if (error == Error.NONE) null else error
+                        }
+                    if (BuildConfig.DEBUG && errors.isNotEmpty()) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Error enqueuing download: $errors",
+                            LENGTH_SHORT,
+                        ).show()
+                    }
+                    if (errors.isEmpty()) {
+                        DownloadNotificationWorker.start()
+                    }
+                }
+            }
+        }
+
+        /**
+         * Storage safety net (PLAN.md section 8): refuses to start a download when the book's
+         * not-yet-cached tracks would need more space than is free on [PrefsRepo.cachedMediaDir].
+         * Errs conservative — sums every not-yet-cached track's [MediaItemTrack.size] rather than
+         * re-deriving [makeRequests]'s exact per-file skip logic (already-downloaded-but-partial
+         * files are treated as still needing their full size again).
+         *
+         * On refusal, shows the user a Toast and returns `false` so the caller can skip enqueuing
+         * without touching the Fetch integration itself.
+         */
+        private suspend fun hasEnoughSpaceForBook(bookId: String): Boolean {
+            val neededBytes =
+                trackRepository.getTracksForAudiobookAsync(bookId)
+                    .filterNot { it.cached }
+                    .sumOf { it.size }
+            if (neededBytes <= 0L) {
+                return true
+            }
+            val availableBytes = prefsRepo.cachedMediaDir.bytesAvailable()
+            if (availableBytes < neededBytes) {
+                Timber.e(
+                    "Refusing to download book $bookId: needs ${neededBytes}B, only " +
+                        "${availableBytes}B free on ${prefsRepo.cachedMediaDir}",
+                )
+                Toast.makeText(
+                    applicationContext,
+                    "Not enough storage space to download this audiobook",
+                    LENGTH_SHORT,
+                ).show()
+                return false
+            }
+            return true
+        }
+
+        /**
+         * Creates [Request]s for all missing files associated with [bookId]
+         *
+         * @return the number of files to be downloaded
+         */
+        private suspend fun makeRequests(
+            bookId: String,
+            bookTitle: String,
+        ): List<Request> {
+            // Gets all tracks for album id
+            val tracks = trackRepository.getTracksForAudiobookAsync(bookId)
+            // Extract numeric ID for Fetch group
+            val numericBookId = bookId.removePrefix("plex:").toIntOrNull() ?: return emptyList()
+
+            val cachedFilesDir = prefsRepo.cachedMediaDir
+            Timber.i("Caching tracks to: ${cachedFilesDir.path}")
+            Timber.i("Tracks to cache: $tracks")
+
+            val requests =
+                tracks.mapNotNull { track ->
+                    // File exists but is not marked as cached in the database- more likely than not
+                    // this means that it has failed to fully download
+                    val destFile = File(cachedFilesDir, track.getCachedFileName())
+                    val trackCached = track.cached
+                    val destFileExists = destFile.exists()
+
+                    // No need to make a new request, the file is already downloaded
+                    if (trackCached && destFileExists) {
+                        return@mapNotNull null
+                    }
+
+                    // File exists but is not marked as cached in the database- probably means a download
+                    // has failed. Delete it and try again
+                    if (!trackCached && destFileExists) {
+                        val deleted = destFile.delete()
+                        if (!deleted) {
+                            Timber.e("Failed to delete previously cached file. Download will fail!")
+                        } else {
+                            Timber.e("Succeeding in deleting cached file")
+                        }
+                    }
+
+                    return@mapNotNull makeTrackDownloadRequest(
+                        track,
+                        numericBookId,
+                        bookTitle,
+                        "file://${destFile.absolutePath}",
+                    )
+                }
+            Timber.i("Made download requests: ${requests.map { it.file }}")
+            return requests
+        }
+
+        /** Create a [Request] for a track download with the proper metadata */
+        private fun makeTrackDownloadRequest(
+            track: MediaItemTrack,
+            bookId: Int,
+            bookTitle: String,
+            dest: String,
+        ) = plexConfig.makeDownloadRequest(track.media, bookId, bookTitle, dest)
+
+        override suspend fun uncacheAllInLibrary(): Int {
+            Timber.i("Removing books from library")
+            val cachedTrackNamesForLibrary =
+                trackRepository.getCachedTracks()
+                    .map { it.getCachedFileName() }
+            val allCachedTrackFiles =
+                externalFileDirs.flatMap { dir ->
+                    dir.listFiles(
+                        FileFilter {
+                            MediaItemTrack.cachedFilePattern.matches(it.name)
+                        },
+                    )?.toList() ?: emptyList()
+                }
+            allCachedTrackFiles.forEach {
+                Timber.i("Cached for library: $cachedTrackNamesForLibrary")
+                if (cachedTrackNamesForLibrary.contains(it.name)) {
+                    Timber.i("Deleting file: ${it.name}")
+                    it.delete()
+                } else {
+                    Timber.i("Not deleting file: ${it.name}")
+                }
+            }
+            trackRepository.uncacheAll()
+            bookRepository.uncacheAll()
+            return allCachedTrackFiles.size
+        }
+
+        /**
+         * Deletes cached tracks from the filesystem corresponding to [tracks]. Assume all tracks have
+         * the correct [MediaItemTrack.parentKey] set
+         *
+         * Return [Result.success] on successful deletion of all files or [Result.failure] if the
+         * deletion of any files fail
+         */
+        override suspend fun deleteCachedBook(bookId: String) {
+            Timber.i("Deleting downloaded book: $bookId")
+            // Extract numeric ID for Fetch group
+            val numericBookId = bookId.removePrefix("plex:").toIntOrNull()
+            if (numericBookId != null) {
+                fetch.deleteGroup(numericBookId)
+            }
+            scopeManager.launchSafe(
+                tag = "delete-cache-$bookId",
+                onError = { error ->
+                    Timber.e("Failed to delete cached book $bookId: ${error.message}")
+                },
+            ) {
+                withContext(Dispatchers.IO) {
+                    val tracks = trackRepository.getTracksForAudiobookAsync(bookId)
+                    tracks.forEach {
+                        val trackFile = File(prefsRepo.cachedMediaDir, it.getCachedFileName())
+                        trackFile.delete()
+                        // now count it as deleted
+                        trackRepository.updateCachedStatus(it.id, false)
+                    }
+                    bookRepository.updateCachedStatus(bookId, false)
+                }
+            }
+        }
+
+        /** Set of [Audiobook.id] representing all books being actively downloaded */
+        private var activeDownloads =
+            object : SimpleSet<String> {
+                private val internalSet = mutableSetOf<String>()
+                override val size: Int
+                    get() = internalSet.size
+
+                override fun add(elem: String): Boolean {
+                    _activeBookDownloads.postValue(internalSet)
+                    return internalSet.add(elem)
+                }
+
+                override fun remove(elem: String): Boolean {
+                    _activeBookDownloads.postValue(internalSet)
+                    return internalSet.remove(elem)
+                }
+
+                override fun toString() = internalSet.toString()
+
+                override operator fun contains(elem: String) = internalSet.contains(elem)
+            }
+
+        private val _activeBookDownloads = MutableLiveData<Set<String>>()
+        override val activeBookDownloads: LiveData<Set<String>>
+            get() = _activeBookDownloads
+
+        init {
+            applicationContext.registerReceiver(
+                downloadListener,
+                IntentFilter().apply {
+                    addAction(DownloadNotificationWorker.ACTION_CANCEL_BOOK_DOWNLOAD)
+                    addAction(DownloadNotificationWorker.ACTION_CANCEL_ALL_DOWNLOADS)
+                },
+                Context.RECEIVER_NOT_EXPORTED,
+            )
+
+            // singleton so we can observe downloads always
+            fetch.addListener(
+                object : FetchGroupStartFinishListener() {
+                    override fun onStarted(
+                        groupId: Int,
+                        fetchGroup: FetchGroup,
+                    ) {
+                        // Convert numeric group ID to String format
+                        val bookId = "plex:$groupId"
+                        if (bookId !in activeDownloads) {
+                            Timber.i("Starting downloading book with id: $bookId")
+                        }
+                        activeDownloads.add(bookId)
+                    }
+
+                    override fun onStarted(
+                        download: Download,
+                        downloadBlocks: List<DownloadBlock>,
+                        totalBlocks: Int,
+                    ) {
+                        Timber.i("Starting download!")
+                        DownloadNotificationWorker.start()
+                        super.onResumed(download)
+                    }
+
+                    override fun onFinished(
+                        groupId: Int,
+                        fetchGroup: FetchGroup,
+                    ) {
+                        // Convert numeric group ID to String format
+                        val bookId = "plex:$groupId"
+                        // Handle the various downloaded statuses
+                        Timber.i(
+                            "Group change for book with id $bookId: ${fetchGroup.downloads.size} tracks downloaded",
+                        )
+                        val downloads = fetchGroup.downloads
+                        Timber.i(downloads.joinToString { it.status.toString() })
+                        activeDownloads.remove(bookId)
+                        val downloadSuccess =
+                            downloads.all { it.error == Error.NONE } && downloads.isNotEmpty()
+                        if (downloadSuccess) {
+                            scopeManager.launchSafe(
+                                tag = "update-cache-status-$bookId",
+                                onError = { error ->
+                                    Timber.e("Failed to update cache status for book $bookId: ${error.message}")
+                                },
+                            ) {
+                                withContext(Dispatchers.IO) {
+                                    Timber.i("Book download success for ($bookId)")
+                                    val tracksForBook =
+                                        trackRepository.getAllTracksAsync().filter { it.parentKey == bookId }
+                                    tracksForBook.forEach { track ->
+                                        trackRepository.updateCachedStatus(track.id, true)
+                                    }
+                                    Timber.i("Marked ${tracksForBook.size} tracks as cached for ($bookId)")
+                                    bookRepository.updateCachedStatus(bookId, true)
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+        }
+
+        /**
+         * Update [trackRepository] and [bookRepository] to reflect downloaded files
+         *
+         * Deletes files for [Audiobook]s no longer in the database and updates [Audiobook.isCached]
+         * for downloaded files which no longer exist on the file system
+         */
+        override suspend fun refreshTrackDownloadedStatus() {
+            val idToFileMap = HashMap<String, File>()
+            val trackIdsFoundOnDisk =
+                prefsRepo.cachedMediaDir.listFiles(
+                    FileFilter {
+                        MediaItemTrack.cachedFilePattern.matches(it.name)
+                    },
+                )?.map {
+                    val id = MediaItemTrack.getTrackIdFromFileName(it.name)
+                    idToFileMap[id] = it
+                    id
+                } ?: emptyList()
+
+            val reportedCachedKeys = trackRepository.getCachedTracks().map { it.id }
+
+            val alteredTracks = mutableListOf<String>()
+
+            // Exists in DB but not in cache- remove from DB!
+            reportedCachedKeys.filter {
+                !trackIdsFoundOnDisk.contains(it)
+            }.forEach {
+                Timber.i("Removed track: $it")
+                alteredTracks.add(it)
+                trackRepository.updateCachedStatus(it, false)
+            }
+
+            // Exists in cache but not in DB- add to DB!
+            trackIdsFoundOnDisk.filter {
+                !reportedCachedKeys.contains(it)
+            }.forEach {
+                val rowsUpdated = trackRepository.updateCachedStatus(it, true)
+                if (rowsUpdated == 0) {
+                    // TODO: this will be relevant when multiple sources is implemented, but for now
+                    //       we just have to trust as we allow users to retain downloads across libraries
+//                // File has been orphaned- no longer exists in DB, remove it from file system!
+//                idToFileMap[it]?.delete()
+                } else {
+                    alteredTracks.add(it)
+                }
+            }
+
+            // Update cached status for the books containing any added/removed tracks
+            alteredTracks.map {
+                trackRepository.getBookIdForTrack(it)
+            }.distinct().forEach { bookId: String ->
+                Timber.i("Book: $bookId")
+                if (bookId == NO_AUDIOBOOK_FOUND_ID) {
+                    return@forEach
+                }
+                val bookTrackCacheCount =
+                    trackRepository.getCachedTrackCountForBookAsync(bookId)
+                val bookTrackCount = trackRepository.getTrackCountForBookAsync(bookId)
+                val isBookCached = bookTrackCacheCount == bookTrackCount && bookTrackCount > 0
+                val book = bookRepository.getAudiobookAsync(bookId)
+                if (book != null) {
+                    bookRepository.update(
+                        book.copy(
+                            isCached = isBookCached,
+                            chapters = book.chapters.map { it.copy(downloaded = isBookCached) },
+                        ),
+                    )
+                }
+            }
+        }
+
+        /**
+         * Cancels all pending download operations.
+         * Call this when the manager is no longer needed to prevent leaks.
+         */
+        fun cancelAllDownloads() {
+            scopeManager.cancelAll()
+        }
+
+        /**
+         * Cancels a specific download by book ID.
+         */
+        fun cancelDownload(bookId: String) {
+            scopeManager.cancel("download-book-$bookId")
+        }
+
+        /**
+         * Returns true if a download is in progress for the given book.
+         */
+        fun isDownloading(bookId: String): Boolean {
+            return scopeManager.isActive("download-book-$bookId")
+        }
+
+        /**
+         * Migrates cached files from being named after the [MediaItemTrack.id] to being named after
+         * the persistent part in [MediaItemTrack.media]
+         */
+        private fun migrateCachedFiles() {
+        }
+    }

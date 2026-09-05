@@ -1,5 +1,7 @@
 # Settings
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's configurable preferences and settings.
 
 ## Overview

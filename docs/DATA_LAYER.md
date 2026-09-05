@@ -581,7 +581,7 @@ flowchart TD
     
     subgraph File System
         Audio[Downloaded audio files]
-        Images[Fresco image cache]
+        Images[Coil image cache]
     end
     
     subgraph SharedPreferences

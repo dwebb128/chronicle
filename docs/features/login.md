@@ -1,5 +1,7 @@
 # Login & Authentication
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's authentication flow, including OAuth, user selection, server selection, and library selection.
 
 ## Plex Authentication

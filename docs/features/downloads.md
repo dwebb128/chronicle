@@ -1,5 +1,7 @@
 # Offline Downloads
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's download and offline playback features.
 
 ## Overview

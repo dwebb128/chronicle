@@ -2,16 +2,18 @@
 
 This document describes the layered architecture of Chronicle, with details on each layer's responsibilities and key components.
 
-For a high-level overview, see the [Architecture Overview](../ARCHITECTURE.md).
+For a high-level overview, see the [Architecture Overview](../ARCHITECTURE.md). For Wear-specific
+platform concerns (rotary input, Ongoing Activity, etc.), see [Wear OS Platform](wear-platform.md).
 
 ## Overview
 
-Chronicle follows a layered MVVM architecture with three primary layers:
+Chronicle follows a layered MVVM architecture with three primary layers. The presentation layer is
+Compose for Wear OS — there are no Fragments:
 
 ```mermaid
 graph TB
     subgraph Presentation Layer
-        Fragments[Feature Fragments]
+        Screens[Compose Screens]
         VM[ViewModels]
     end
     
@@ -27,7 +29,7 @@ graph TB
         Cache[File Cache]
     end
     
-    Fragments --> VM
+    Screens --> VM
     VM --> Repo
     Repo --> LocalDB
     Repo --> RemoteAPI
@@ -38,40 +40,47 @@ graph TB
 
 ## Presentation Layer
 
-Located in [`features/`](../../app/src/main/java/local/oss/chronicle/features/)
+Composable screens are located in [`ui/`](../../app/src/main/java/local/oss/chronicle/ui/); their
+ViewModels remain organized by feature under
+[`features/`](../../app/src/main/java/local/oss/chronicle/features/). Each screen follows the MVVM
+pattern: the composable renders state exposed by its ViewModel via `observeAsState()` and calls
+ViewModel methods in response to user interaction, never navigating or mutating state directly.
+See [`docs/features/wear-ui.md`](../features/wear-ui.md) for the full screen-by-screen writeup —
+this section covers the general shape only.
 
-The presentation layer contains all UI-related code organized by feature. Each feature module follows the MVVM pattern.
+### Screens and their ViewModels
 
-### Feature Modules
+| Screen (`ui/screens/`) | ViewModel (`features/`) | Purpose |
+|---------|------|---------|
+| `LinkAccountScreen` | `LoginViewModel` (`features/login/`) | plex.tv/link sign-in — see [Plex Sign-In](../features/plex-link-login.md) |
+| `ChooseUserScreen` | `ChooseUserViewModel` (`features/login/`) | Managed/family user selection |
+| `ChooseServerScreen` | `ChooseServerViewModel` (`features/login/`) | Plex server selection |
+| `ChooseLibraryScreen` | `ChooseLibraryViewModel` (`features/login/`) | Library selection |
+| `LibraryScreen` | `LibraryViewModel` (`features/library/`) | Full audiobook library |
+| `BookDetailsScreen` | `AudiobookDetailsViewModel` (`features/bookdetails/`) | Audiobook details, chapters |
+| `NowPlayingScreen`, `PlaybackSpeedScreen`, `SleepTimerScreen` | `CurrentlyPlayingViewModel` (`features/currentlyplaying/`) | Transport controls, speed, sleep timer |
+| `SettingsScreen` | `SettingsViewModel` (`features/settings/`) | App preferences (rewritten for Wear — a small fixed row set, not the phone's ~40-row generic list) |
 
-| Feature | Purpose |
-|---------|---------|
-| [`login/`](../../app/src/main/java/local/oss/chronicle/features/login/) | OAuth flow, server/user/library selection |
-| [`home/`](../../app/src/main/java/local/oss/chronicle/features/home/) | Recently listened, recently added books |
-| [`library/`](../../app/src/main/java/local/oss/chronicle/features/library/) | Full audiobook library with search/filter |
-| [`bookdetails/`](../../app/src/main/java/local/oss/chronicle/features/bookdetails/) | Audiobook details, chapters, playback |
-| [`collections/`](../../app/src/main/java/local/oss/chronicle/features/collections/) | Plex collections browsing |
-| [`currentlyplaying/`](../../app/src/main/java/local/oss/chronicle/features/currentlyplaying/) | Full-screen player UI |
-| [`player/`](../../app/src/main/java/local/oss/chronicle/features/player/) | MediaPlayerService, ExoPlayer integration |
-| [`settings/`](../../app/src/main/java/local/oss/chronicle/features/settings/) | App preferences |
+`features/player/` remains the MediaPlayerService/ExoPlayer integration (a service, not a screen).
+`features/account/` and `features/auth/` are non-UI: account/credential data-layer classes and the
+`PlexAuthCoordinator` state machine, respectively.
+
+Collections, Home, and Search screens and their ViewModels were removed entirely — there is no
+`features/collections/`, `features/home/`, or `features/search/` package anymore.
 
 ### Feature Module Structure
 
-Each feature contains:
-
-- **Fragment** (UI) - Handles view rendering and user interaction
-- **ViewModel** (UI State & Logic) - Manages UI state and orchestrates business logic
-- **Adapters** (RecyclerView) - Binds data to list views
-- **Binding Adapters** (Data Binding) - Custom XML attribute bindings
-
-### Example Feature Structure
+A typical feature package now contains just a `ViewModel` and its `Factory` — no Fragment, no
+RecyclerView adapter, no `*BindingAdapters.kt`:
 
 ```
 features/bookdetails/
-├── AudiobookDetailsFragment.kt      # UI Fragment
-├── AudiobookDetailsViewModel.kt     # State management
-├── ChapterListAdapter.kt            # RecyclerView adapter
-└── AudiobookDetailsBindingAdapters.kt  # Data binding extensions
+└── AudiobookDetailsViewModel.kt     # State management + Factory
+```
+
+```
+ui/screens/
+└── BookDetailsScreen.kt             # @Composable — renders AudiobookDetailsViewModel's LiveData
 ```
 
 ---
@@ -174,6 +183,8 @@ sequenceDiagram
 ## Related Documentation
 
 - [Architecture Overview](../ARCHITECTURE.md) - High-level architecture diagrams
-- [Dependency Injection](dependency-injection.md) - Dagger component hierarchy
-- [Architectural Patterns](patterns.md) - Key patterns used in Chronicle
-- [Plex Integration](plex-integration.md) - Plex-specific implementation details
+- [Wear OS Platform](wear-platform.md) - Rotary input, Ongoing Activity, and other Wear specifics
+- [Wear OS UI](../features/wear-ui.md) - Screen-by-screen breakdown
+- [Dependency Injection](dependency-injection.md) - Dagger component hierarchy (STALE — phone-era; component shape is unchanged)
+- [Architectural Patterns](patterns.md) - Key patterns used in Chronicle (STALE — phone-era)
+- [Plex Integration](plex-integration.md) - Plex-specific implementation details (STALE — phone-era)

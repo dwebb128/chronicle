@@ -1,5 +1,7 @@
 # Architectural Patterns
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document describes the key architectural patterns used in Chronicle.
 
 For a high-level overview, see the [Architecture Overview](../ARCHITECTURE.md).

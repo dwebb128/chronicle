@@ -156,13 +156,13 @@ Build a release APK locally:
 
 If successful, you'll find the signed APK at:
 ```
-app/build/outputs/apk/release/app-release.apk
+wear/build/outputs/apk/release/wear-release.apk
 ```
 
 **Verify the APK is signed:**
 ```bash
 # Check APK signature
-jarsigner -verify -verbose -certs app/build/outputs/apk/release/app-release.apk
+jarsigner -verify -verbose -certs wear/build/outputs/apk/release/wear-release.apk
 ```
 
 You should see:
@@ -251,7 +251,7 @@ rm keystore-base64.txt
 ./gradlew assembleRelease
 
 # Verify signing
-jarsigner -verify -verbose -certs app/build/outputs/apk/release/app-release.apk
+jarsigner -verify -verbose -certs wear/build/outputs/apk/release/wear-release.apk
 ```
 
 **Expected output:**

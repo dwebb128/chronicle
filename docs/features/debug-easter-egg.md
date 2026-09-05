@@ -1,5 +1,7 @@
 # Debug Easter Egg Feature
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 ## Overview
 
 A hidden debug screen accessible via an Easter egg in Settings that displays connection debugging information. Users can view available server URLs, the currently connected URL, and test connections to diagnose connectivity issues.

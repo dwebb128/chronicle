@@ -1,5 +1,7 @@
 # Plex Integration Architecture
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document describes Chronicle's integration with Plex Media Server, including the client profile system, audio format support, and bandwidth-aware playback.
 
 For a high-level overview, see the [Architecture Overview](../ARCHITECTURE.md).

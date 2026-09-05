@@ -1,8 +1,24 @@
 # Chronicle Epilogue - Audiobook Player for Plex
 
-> **Note:** This is a fork of [mattttvaughn/chronicle](https://github.com/mattttvaughn/chronicle). The original project was not maintained for a while, and this fork aims to continue development and improvements. We acknowledge and appreciate the excellent work done by the original developer, [@mattttvaughn](https://github.com/mattttvaughn).
+> **Unofficial fork.** This is an unofficial, community-maintained fork of
+> [mattttvaughn/chronicle](https://github.com/mattttvaughn/chronicle) whose purpose is to **add Wear
+> OS support** to the original Android app. It is not affiliated with, endorsed by, or supported by
+> the original author or by Plex. The original project was unmaintained for a while; this fork
+> continues development and adds a watch app alongside the phone one. We acknowledge and appreciate
+> the excellent work done by the original developer,
+> [@mattttvaughn](https://github.com/mattttvaughn). For the original, unmodified app, use upstream.
 
-The best Android Audiobook Player for Plex. Stream and offline audiobooks hosted on your Plex server.
+An audiobook player for Plex that runs on **both your phone and your watch**. Stream and download
+audiobooks hosted on your Plex server — on an Android phone, or standalone on a Wear OS watch with
+no phone required once it's set up.
+
+| App | Gradle module | Runs on |
+| --- | --- | --- |
+| Phone | `:mobile` | Android 11+ (API 30) |
+| Watch | `:wear` | Wear OS 4+ (API 34), standalone |
+
+Both are built from the shared `:core` module, which holds the Plex API client, the Room
+databases and the playback service.
 
 > **Note:** The Chronicle Epilogue app is being submitted to the Google Play Store! If you'd like to access the closed beta testing, you can request access by joining our [Google Group for alpha testing](https://groups.google.com/g/chronicle-app-alpha-testing)/[Google Group for beta testing](https://groups.google.com/g/chronicle-app-beta-testing).
 
@@ -15,11 +31,18 @@ The best Android Audiobook Player for Plex. Stream and offline audiobooks hosted
  - Sleep timer
  - Skip silent audio
  - Download books for playing any time, even when offline
- - Basic Android Auto support (playback works but no voice support)
- 
+
 ### Screenshots
 
 For more screenshots and information, visit [www.chronicleapp.net](https://www.chronicleapp.net)
+
+> **Note:** The screenshots linked above show the phone app. The Wear OS UI is not pictured yet.
+
+### Installing from source
+
+See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build both apps and sideload them onto a
+Pixel phone and a Pixel Watch (or their emulators). On Ubuntu,
+[docs/EMULATOR-UBUNTU.md](docs/EMULATOR-UBUNTU.md) sets up both emulators from scratch.
 
 ### Reporting Bugs
 

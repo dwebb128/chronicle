@@ -1,0 +1,28 @@
+Stream or download audiobooks hosted on your Plex server with Chronicle, the loved Audiobook Player for Plex — now built for Wear OS, so your books go wherever your watch does.
+
+<b>📚 Key Features</b>
+
+• <b>Sync Progress</b> - Keep your audiobook progress synchronized across your devices
+• <b>Multiple Formats</b> - Support for mp3, m4a, and m4b audiobook files
+• <b>Adjustable Playback Speed</b> - Listen at your own pace with customizable playback speeds
+• <b>Auto-Rewind</b> - Never lose your place with automatic rewind on resume
+• <b>Sleep Timer</b> - Fall asleep to your favorite books with built-in sleep timer
+• <b>Skip Silence</b> - Automatically skip silent portions for efficient listening
+• <b>Download Books</b> - Download audiobooks to your watch for offline playback anytime, anywhere
+
+<b>⌚ Built for the Wrist</b>
+
+Chronicle is designed specifically for Plex users who want a dedicated audiobook player on their wrist, with a Wear OS interface built for quick glances and rotary-crown navigation. Connect to your Plex server and enjoy your entire audiobook collection without needing your phone in hand.
+
+<b>🎯 Requirements</b>
+
+• A Plex server with audiobook content
+• A Wear OS watch
+• Network access to your Plex server
+
+<b>🔗 Useful Resources</b>
+
+• Plex Audiobook Guide: https://github.com/seanap/Plex-Audiobook-Guide
+• Chronicle Community: https://www.reddit.com/r/ChronicleEpilogueApp/
+
+Chronicle is open source and continuously improving. Experience the best way to enjoy your Plex audiobooks on your Wear OS watch!

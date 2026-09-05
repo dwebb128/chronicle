@@ -1,0 +1,90 @@
+<resources>
+    <!-- Main activity/shared strings -->
+    <string name="app_name">Chronicle</string>
+    <string name="attribution_media_playback">Media playback and library synchronization</string>
+
+    <!-- plex.tv/link sign-in -->
+    <string name="link_account_instructions">On another device, go to plex.tv/link and enter this code</string>
+
+    <!-- Choose server/library pages -->
+    <string name="choose_server">Choose Server</string>
+    <string name="choose_library">Choose Library</string>
+    <string name="choose_user">Choose User</string>
+
+    <!-- Book details-->
+    <string name="chapters">Chapters</string>
+    <string name="prompt_mark_as_played">Mark as played?</string>
+    <string name="prompt_mark_as_unplayed">Mark as unplayed?</string>
+    <string name="marked_as_played">Marked audiobook as played.</string>
+    <string name="marked_as_unplayed">Marked audiobook as unplayed.</string>
+    <string name="cannot_play_media_no_server">Cannot play media- not connected to any server!</string>
+    <string name="unable_to_cache_audiobook">Unable to download audiobook- not connected to server</string>
+    <string name="prompt_force_sync">Force sync with network? Local progress will be lost</string>
+    <string name="progress_sync_successful">Sync successful!</string>
+    <string name="progress_sync_failed">Sync failed</string>
+    <string name="cannot_sync_no_server">Not connected to server</string>
+
+    <!-- Playback -->
+    <string name="warning_jump_to_chapter_will_clear_progress">This will clear your saved progress. Continue?</string>
+    <string name="playback_error_401">Playback error (401): Not authorized</string>
+    <string name="playback_error_503">Playback error (503): Server unavailable</string>
+    <string name="playback_error_404">Playback error (404): Track not found</string>
+
+    <!-- Downloads -->
+    <string name="download_all_prompt">Download will use %1$s. %2$s available</string>
+    <string name="delete_cache_files_prompt">Delete cached files?</string>
+
+    <!-- Sleep timer-->
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_timer_active_title">Sleep timer: %1$s remaining</string>
+    <string name="sleep_timer_duration_5_minutes">5 minutes</string>
+    <string name="sleep_timer_duration_15_minutes">15 minutes</string>
+    <string name="sleep_timer_duration_30_minutes">30 minutes</string>
+    <string name="sleep_timer_duration_40_minutes">40 minutes</string>
+    <string name="sleep_timer_duration_60_minutes">60 minutes</string>
+    <string name="sleep_timer_duration_90_minutes">90 minutes</string>
+    <string name="sleep_timer_duration_120_minutes">120 minutes</string>
+    <string name="sleep_timer_duration_end_of_chapter">End of chapter</string>
+    <string name="sleep_timer_append">+5 minutes</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Settings -->
+    <string name="no_bluetooth_output_warning">Playing on watch speaker — connect Bluetooth headphones</string>
+    <string name="settings">Settings</string>
+    <string name="settings_delete_synced_title">Delete synced files</string>
+    <string name="settings_delete_synced_confirm">Delete all downloaded files?</string>
+    <string name="settings_delete_synced_response">Deleted %1$s cached files</string>
+    <string name="settings_offline_mode_title">Offline Mode</string>
+    <string name="settings_refresh_rate_always">Always refresh</string>
+    <string name="settings_refresh_rate_title">Refresh frequency</string>
+    <string name="settings_refresh_rate_15_minutes">15 minutes</string>
+    <string name="settings_refresh_rate_1_hour">1 hour (default)</string>
+    <string name="settings_refresh_rate_3_hours">3 hours</string>
+    <string name="settings_refresh_rate_6_hours">6 hours</string>
+    <string name="settings_refresh_rate_1_day">1 day</string>
+    <string name="settings_refresh_rate_3_days">3 days</string>
+    <string name="settings_refresh_rate_1_week">1 week</string>
+    <string name="settings_refresh_rate_manual">Manual refresh only</string>
+    <string name="settings_skip_silent_audio">Skip silent audio</string>
+    <string name="settings_auto_rewind">Enable auto-rewind</string>
+    <string name="settings_log_out">Log out</string>
+    <string name="settings_clear_downloads_warning">This will delete your downloaded files. Continue?</string>
+    <string name="settings_pause_on_focus_lost_title">Pause during interruptions</string>
+
+    <string name="settings_jump_forward_title">Jump forward</string>
+    <string name="settings_jump_backward_title">Jump backward</string>
+    <string name="settings_jump_10_seconds">10 seconds</string>
+    <string name="settings_jump_15_seconds">15 seconds</string>
+    <string name="settings_jump_20_seconds">20 seconds</string>
+    <string name="settings_jump_30_seconds">30 seconds</string>
+    <string name="settings_jump_60_seconds">60 seconds</string>
+    <string name="settings_jump_90_seconds">90 seconds</string>
+
+    <!-- Spoken TTS error messages (VoiceCommandBridgeAudio, D44 — kept though the Android Auto
+         browsing UI these were originally written for is cut) -->
+
+    <string name="submit">Submit</string>
+    <string name="pin">Pin</string>
+    <string name="playback_error_unknown">Unknown playback error</string>
+    <string name="settings_version_title">Version information</string>
+</resources>

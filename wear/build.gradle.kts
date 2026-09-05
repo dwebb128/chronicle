@@ -1,0 +1,240 @@
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.play.publisher)
+    alias(libs.plugins.compose.compiler)
+    id("kotlin-parcelize")
+}
+
+android {
+    namespace = "local.oss.chronicle"
+    compileSdk = 36
+
+    lint {
+        abortOnError = false
+        baseline = file("lint-baseline.xml")
+        checkReleaseBuilds = true
+        checkAllWarnings = true
+    }
+
+    defaultConfig {
+        applicationId = "local.oss.chronicle"
+        minSdk = 34
+        targetSdk = 36
+        versionCode = 67
+        versionName = "0.62.4"
+
+        testInstrumentationRunner = "local.oss.chronicle.application.ChronicleTestRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            // For GitHub Actions: use environment variables
+            // For local builds: use keystore.properties file
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                // GitHub Actions signing configuration
+                storeFile = file(System.getenv("KEYSTORE_FILE"))
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            } else if (keystorePropertiesFile.exists()) {
+                // Local signing configuration from keystore.properties
+                val keystoreProperties = Properties()
+                keystoreProperties.load(keystorePropertiesFile.inputStream())
+
+                storeFile = file(keystoreProperties["storeFile"].toString())
+                storePassword = keystoreProperties["storePassword"].toString()
+                keyAlias = keystoreProperties["keyAlias"].toString()
+                keyPassword = keystoreProperties["keyPassword"].toString()
+            }
+            // If neither exists, release builds will use debug signing
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
+            // Use release signing config if available
+            val releaseSigningConfig = signingConfigs.findByName("release")
+            if (releaseSigningConfig?.storeFile != null) {
+                signingConfig = releaseSigningConfig
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+
+        freeCompilerArgs +=
+            listOf(
+                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            )
+    }
+    buildFeatures {
+        dataBinding = false
+        compose = true
+        buildConfig = true
+    }
+
+    packaging {
+        resources {
+            excludes +=
+                setOf(
+                    "META-INF/LICENSE.md",
+                    "META-INF/LICENSE-notice.md",
+                )
+        }
+    }
+
+    sourceSets {
+        // Share test utilities between unit tests and instrumented tests
+        getByName("test") {
+            java.srcDir("../core/src/testShared/java")
+        }
+        getByName("androidTest") {
+            java.srcDir("../core/src/testShared/java")
+        }
+    }
+}
+
+// Play Publisher configuration
+play {
+    // Service account from environment variable (CI) or file (local)
+    val credentialsFile = file("play-store-credentials.json")
+    if (System.getenv("PLAY_STORE_SERVICE_ACCOUNT_JSON") != null) {
+        serviceAccountCredentials.set(
+            file(System.getenv("PLAY_CREDENTIALS_FILE") ?: "play-credentials.json"),
+        )
+    } else if (credentialsFile.exists()) {
+        serviceAccountCredentials.set(credentialsFile)
+    }
+
+    track.set("internal") // Default track
+    defaultToAppBundles.set(true) // Use AAB by default
+
+    // For apps not yet published to production, releases must be drafts
+    // Change to COMPLETED once the app is live on Play Store
+    releaseStatus.set(com.github.triplet.gradle.androidpublisher.ReleaseStatus.DRAFT)
+}
+
+// KSP configuration for Room
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
+}
+
+dependencies {
+
+    implementation(project(":core"))
+
+    implementation(libs.timber)
+    implementation(libs.fetch)
+    implementation(libs.work)
+    implementation(libs.result)
+    implementation(libs.security.crypto)
+    implementation(libs.annotation)
+    implementation(libs.coroutines)
+    implementation(libs.lifecycle.livedata.ktx)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    compileOnly(libs.facebook.infer.annotation)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter)
+
+    implementation(libs.okhttp3)
+    implementation(libs.okhttp3.logging)
+
+    implementation(libs.moshi)
+    // Removed moshi-codegen KAPT processor - deprecated for Kotlin 2.x
+    // Moshi will use reflection-based adapters instead
+
+    implementation(libs.coil.compose)
+
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
+    implementation(libs.room.ktx)
+
+    implementation(libs.dagger)
+    ksp(libs.dagger.compiler)
+
+    // MediaPlayerService extends androidx.media.MediaBrowserServiceCompat, and the playback
+    // layer is still written against the android.support.v4.media.* compat types. This used
+    // to arrive transitively via media3-cast, which Wear does not need; declare it directly.
+    implementation(libs.media.compat)
+
+    // The service/ViewModel layer talks to the UI over LocalBroadcastManager. It used to arrive
+    // transitively through appcompat, which the Compose conversion dropped.
+    implementation(libs.localbroadcastmanager)
+
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.session)
+    implementation(libs.media3.datasource)
+
+    implementation(libs.activity.compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.runtime.livedata)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+
+    implementation(libs.wear.compose.foundation)
+    implementation(libs.wear.compose.material)
+    implementation(libs.wear.compose.navigation)
+    implementation(libs.wear.ongoing)
+
+    /*
+     * Local Tests
+     */
+    testImplementation(libs.dagger)
+    kspTest(libs.dagger.compiler)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.hamcrest)
+    testImplementation(libs.truth)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.androidx.arch.core.testing)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.room.testing)
+
+    /*
+     * Instrumented Tests
+     */
+    androidTestImplementation(libs.dagger)
+    kspAndroidTest(libs.dagger.compiler)
+
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.mockk.android)
+    androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit.ktx)
+    androidTestImplementation(libs.room.testing)
+}
+
+// tasks.matching { it.name.contains("DebugAndroidTest") && !it.name.contains("Lint") }.configureEach {
+//     enabled = false
+// }

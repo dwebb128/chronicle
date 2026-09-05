@@ -1,0 +1,10 @@
+<resources>
+
+    <!-- Base application theme. Minimal — Wear OS Compose screens supply their own MaterialTheme
+         (see ui/theme/Theme.kt). This only backs the window before Compose takes over. -->
+    <style name="AppTheme" parent="android:Theme.DeviceDefault">
+        <item name="android:windowBackground">@color/colorPrimaryDark</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+</resources>
