@@ -5,6 +5,7 @@ import com.squareup.moshi.Moshi
 import io.mockk.*
 import local.oss.chronicle.data.model.ServerModel
 import local.oss.chronicle.data.sources.plex.model.Connection
+import local.oss.chronicle.features.account.CredentialManager
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -19,6 +20,7 @@ import org.junit.Test
 class SharedPreferencesPlexPrefsRepoTest {
     private lateinit var mockPrefs: SharedPreferences
     private lateinit var mockEditor: SharedPreferences.Editor
+    private lateinit var mockCredentialManager: CredentialManager
     private lateinit var moshi: Moshi
     private lateinit var repo: SharedPreferencesPlexPrefsRepo
 
@@ -26,6 +28,10 @@ class SharedPreferencesPlexPrefsRepoTest {
     fun setup() {
         mockPrefs = mockk(relaxed = true)
         mockEditor = mockk(relaxed = true)
+        // The server access token is stored via CredentialManager (encrypted), not mockPrefs --
+        // see SharedPreferencesPlexPrefsRepo. Relaxed so getCredentials() returns null by default
+        // (no token), matching an empty/never-migrated store.
+        mockCredentialManager = mockk(relaxed = true)
         moshi = Moshi.Builder().build()
 
         // Setup default mock behavior
@@ -38,7 +44,7 @@ class SharedPreferencesPlexPrefsRepoTest {
         every { mockEditor.commit() } returns true
         every { mockEditor.apply() } just Runs
 
-        repo = SharedPreferencesPlexPrefsRepo(mockPrefs, moshi)
+        repo = SharedPreferencesPlexPrefsRepo(mockPrefs, moshi, mockCredentialManager)
     }
 
     @After
@@ -120,7 +126,7 @@ class SharedPreferencesPlexPrefsRepoTest {
         every { mockPrefs.getStringSet("remote_server_connections", any()) } returns remoteUris
         every { mockPrefs.getString("server_name", "") } returns "Test Server"
         every { mockPrefs.getString("server_id", "") } returns "test-id"
-        every { mockPrefs.getString("server_token", "") } returns "test-token"
+        every { mockCredentialManager.getCredentials(any()) } returns "test-token"
         every { mockPrefs.getBoolean("server_owned", true) } returns true
 
         // Act
@@ -233,7 +239,7 @@ class SharedPreferencesPlexPrefsRepoTest {
         every { mockPrefs.getStringSet("remote_server_connections", any()) } returns emptySet()
         every { mockPrefs.getString("server_name", "") } returns "Test Server"
         every { mockPrefs.getString("server_id", "") } returns ""
-        every { mockPrefs.getString("server_token", "") } returns "test-token"
+        every { mockCredentialManager.getCredentials(any()) } returns "test-token"
 
         // Act
         val serverModel = repo.server
@@ -268,6 +274,7 @@ class SharedPreferencesPlexPrefsRepoTest {
     fun `server round-trip preserves connection local flags`() {
         // Arrange - Setup in-memory storage simulation
         val storedPrefs = mutableMapOf<String, Any>()
+        val storedCredentials = mutableMapOf<String, String>()
 
         every { mockEditor.putString(any(), any()) } answers {
             storedPrefs[firstArg()] = secondArg<String>()
@@ -290,6 +297,13 @@ class SharedPreferencesPlexPrefsRepoTest {
         }
         every { mockPrefs.getBoolean(any(), any()) } answers {
             storedPrefs[firstArg()] as? Boolean ?: secondArg()
+        }
+        // The access token round-trips through CredentialManager's encrypted store instead.
+        every { mockCredentialManager.storeCredentials(any(), any()) } answers {
+            storedCredentials[firstArg()] = secondArg()
+        }
+        every { mockCredentialManager.getCredentials(any()) } answers {
+            storedCredentials[firstArg()]
         }
 
         val originalServer =

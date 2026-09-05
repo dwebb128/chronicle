@@ -78,7 +78,21 @@ class PlexInterceptor(
             val authToken = if (serviceToken.isNullOrEmpty()) accountToken else serviceToken
 
             if (authToken.isNotEmpty()) {
-                requestBuilder.header("X-Plex-Token", authToken)
+                // usesCleartextTraffic/network_security_config allow plain HTTP broadly, because
+                // Android's Network Security Configuration can't restrict cleartext to "private
+                // network IPs" declaratively (its <domain> matching has no CIDR/IP-range syntax,
+                // only exact hostnames/literal IPs -- see network_security_config.xml). So this is
+                // the actual gate: never send the Plex auth token in the clear to anything other
+                // than a private/link-local/loopback address or a Plex-issued *.plex.direct host.
+                if (schemeOf(interceptedUrl).equals("http", ignoreCase = true) &&
+                    !isLocalCleartextHost(hostOf(interceptedUrl))
+                ) {
+                    Timber.w(
+                        "Refusing to send X-Plex-Token over cleartext to non-local host: ${hostOf(interceptedUrl)}",
+                    )
+                } else {
+                    requestBuilder.header("X-Plex-Token", authToken)
+                }
             }
         }
 
@@ -88,5 +102,52 @@ class PlexInterceptor(
             Timber.w(e, "Network error in PlexInterceptor for ${interceptedUrl}")
             throw e
         }
+    }
+}
+
+private fun schemeOf(url: String): String? =
+    url.substringBefore("://", missingDelimiterValue = "").takeIf { it.isNotEmpty() }
+
+private fun hostOf(url: String): String? {
+    val afterScheme = url.substringAfter("://", url)
+    val afterUserInfo = afterScheme.substringAfter("@")
+    val hostAndPort = afterUserInfo.substringBefore("/")
+    val host = hostAndPort.substringBefore(":")
+    return host.takeIf { it.isNotEmpty() }
+}
+
+/**
+ * True if [host] is safe to send the Plex auth token to over cleartext HTTP: a loopback address,
+ * an RFC1918 private address, a link-local address, or one of Plex's own *.plex.direct LAN
+ * hostnames (e.g. 192-168-1-5.<hash>.plex.direct).
+ */
+internal fun isLocalCleartextHost(host: String?): Boolean {
+    if (host.isNullOrEmpty()) return false
+    val normalized = host.trim('[', ']')
+
+    if (normalized.equals("localhost", ignoreCase = true) ||
+        normalized == "127.0.0.1" ||
+        normalized == "::1"
+    ) {
+        return true
+    }
+    if (normalized.equals("plex.direct", ignoreCase = true) ||
+        normalized.endsWith(".plex.direct", ignoreCase = true)
+    ) {
+        return true
+    }
+
+    val octets = normalized.split(".")
+    if (octets.size != 4) return false
+    val parts = octets.map { it.toIntOrNull() }
+    if (parts.any { it == null || it !in 0..255 }) return false
+    val a = parts[0]!!
+    val b = parts[1]!!
+    return when {
+        a == 10 -> true
+        a == 172 && b in 16..31 -> true
+        a == 192 && b == 168 -> true
+        a == 169 && b == 254 -> true
+        else -> false
     }
 }

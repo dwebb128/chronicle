@@ -8,6 +8,7 @@ import local.oss.chronicle.data.model.ServerModel
 import local.oss.chronicle.data.sources.plex.model.Connection
 import local.oss.chronicle.data.sources.plex.model.MediaType
 import local.oss.chronicle.data.sources.plex.model.PlexUser
+import local.oss.chronicle.features.account.CredentialManager
 import java.util.*
 import javax.inject.Inject
 import kotlin.collections.HashSet
@@ -48,12 +49,23 @@ interface PlexPrefsRepo {
     fun clear()
 }
 
-/** An implementation of [PlexPrefsRepo] wrapping [SharedPreferences]. */
+/**
+ * An implementation of [PlexPrefsRepo] wrapping [SharedPreferences].
+ *
+ * The auth tokens ([accountAuthToken] and [server]'s access token) are secrets, so they're kept
+ * out of the plain-text [prefs] file entirely and stored via [credentialManager]'s
+ * EncryptedSharedPreferences (Android Keystore-backed) instead -- the same encrypted store
+ * [local.oss.chronicle.features.account.Account] credentials already use. Everything else here
+ * (library/server metadata, connections, uuid, etc.) isn't a secret and stays in [prefs] as
+ * before. A one-time [migrateLegacyToken] pulls forward -- and wipes -- any token a previous
+ * version of the app already wrote to the plain-text file.
+ */
 class SharedPreferencesPlexPrefsRepo
     @Inject
     constructor(
         private val prefs: SharedPreferences,
         private val moshi: Moshi,
+        private val credentialManager: CredentialManager,
     ) : PlexPrefsRepo {
         private companion object {
             const val PREFS_AUTH_TOKEN_KEY = "auth_token"
@@ -70,6 +82,10 @@ class SharedPreferencesPlexPrefsRepo
             const val PREFS_TEMP_ID = "id"
             const val PREFS_SERVER_LIST_LAST_REFRESHED = "server_list_last_refreshed"
             const val NO_TEMP_ID_FOUND = -1L
+
+            // Keys into CredentialManager's encrypted store -- not SharedPreferences keys.
+            const val CRED_ACCOUNT_AUTH_TOKEN = "plex_prefs_account_auth_token"
+            const val CRED_SERVER_ACCESS_TOKEN = "plex_prefs_server_access_token"
         }
 
         override val uuid: String
@@ -85,11 +101,13 @@ class SharedPreferencesPlexPrefsRepo
             }
 
         override var accountAuthToken: String
-            get() = getString(PREFS_AUTH_TOKEN_KEY)
+            get() =
+                credentialManager.getCredentials(CRED_ACCOUNT_AUTH_TOKEN)
+                    ?: migrateLegacyToken(PREFS_AUTH_TOKEN_KEY, CRED_ACCOUNT_AUTH_TOKEN)
 
-            @SuppressLint("ApplySharedPref")
             set(value) {
-                prefs.edit().putString(PREFS_AUTH_TOKEN_KEY, value).commit()
+                credentialManager.storeCredentials(CRED_ACCOUNT_AUTH_TOKEN, value)
+                clearLegacyPlaintextKey(PREFS_AUTH_TOKEN_KEY)
             }
 
         override var user: PlexUser?
@@ -138,7 +156,9 @@ class SharedPreferencesPlexPrefsRepo
             get() {
                 val name = getString(PREFS_SERVER_NAME_KEY)
                 val id = getString(PREFS_SERVER_ID_KEY)
-                val token: String = getString(PREFS_SERVER_ACCESS_TOKEN)
+                val token: String =
+                    credentialManager.getCredentials(CRED_SERVER_ACCESS_TOKEN)
+                        ?: migrateLegacyToken(PREFS_SERVER_ACCESS_TOKEN, CRED_SERVER_ACCESS_TOKEN)
                 val owned: Boolean = prefs.getBoolean(PREFS_SERVER_IS_OWNED, true)
 
                 val connections = getServerConnections()
@@ -160,13 +180,15 @@ class SharedPreferencesPlexPrefsRepo
                         .remove(PREFS_LOCAL_SERVER_CONNECTIONS_KEY)
                         .remove(PREFS_REMOTE_SERVER_CONNECTIONS_KEY)
                         .remove(PREFS_SERVER_NAME_KEY).commit()
+                    credentialManager.deleteCredentials(CRED_SERVER_ACCESS_TOKEN)
                     return
                 }
                 prefs.edit()
                     .putString(PREFS_SERVER_NAME_KEY, value.name)
                     .putString(PREFS_SERVER_ID_KEY, value.serverId)
-                    .putString(PREFS_SERVER_ACCESS_TOKEN, value.accessToken)
+                    .remove(PREFS_SERVER_ACCESS_TOKEN)
                     .putBoolean(PREFS_SERVER_IS_OWNED, value.owned).commit()
+                credentialManager.storeCredentials(CRED_SERVER_ACCESS_TOKEN, value.accessToken)
                 putConnections(value.connections)
             }
 
@@ -237,5 +259,29 @@ class SharedPreferencesPlexPrefsRepo
             defaultValue: String = "",
         ): String {
             return prefs.getString(key, defaultValue) ?: defaultValue
+        }
+
+        /**
+         * One-time upgrade path: an older version of the app may have written [legacyPrefsKey]'s
+         * token to the plain-text [prefs] file. If so, pull it into the encrypted store under
+         * [credentialKey], wipe the plain-text copy, and return it; otherwise return "".
+         */
+        @SuppressLint("ApplySharedPref")
+        private fun migrateLegacyToken(
+            legacyPrefsKey: String,
+            credentialKey: String,
+        ): String {
+            val legacyValue = prefs.getString(legacyPrefsKey, null)
+            if (legacyValue.isNullOrEmpty()) return ""
+            credentialManager.storeCredentials(credentialKey, legacyValue)
+            prefs.edit().remove(legacyPrefsKey).commit()
+            return legacyValue
+        }
+
+        @SuppressLint("ApplySharedPref")
+        private fun clearLegacyPlaintextKey(legacyPrefsKey: String) {
+            if (prefs.contains(legacyPrefsKey)) {
+                prefs.edit().remove(legacyPrefsKey).commit()
+            }
         }
     }
