@@ -43,6 +43,28 @@ import local.oss.chronicle.ui.Nav
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.components.OptionsDialog
 
+import android.content.Intent
+import android.provider.Settings
+import timber.log.Timber
+
+private fun launchAudioOutputSettings(context: Context) {
+    val intents =
+        listOf(
+            Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
+            Intent("com.google.android.clockwork.settings.BLUETOOTH_SETTINGS"),
+            Intent("android.settings.BLUETOOTH_SETTINGS"),
+        )
+    for (intent in intents) {
+        try {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        } catch (e: Exception) {
+            Timber.w(e, "Could not launch Bluetooth intent: ${intent.action}")
+        }
+    }
+}
+
 /**
  * The now-playing / transport-controls screen. [CurrentlyPlayingViewModel] is Activity-scoped
  * (PLAN.md section 4) so this screen and [local.oss.chronicle.ui.components.NowPlayingChip] share
@@ -112,13 +134,18 @@ fun NowPlayingScreen(navController: NavHostController) {
             // Non-blocking: playback through the watch speaker still works, but on a wrist
             // that is rarely what the listener wants, so say so rather than silently doing it.
             if (!hasBluetoothAudio) {
-                Text(
-                    text = stringResource(R.string.no_bluetooth_output_warning),
-                    style = MaterialTheme.typography.caption2,
-                    color = MaterialTheme.colors.error,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                CompactChip(
+                    onClick = { launchAudioOutputSettings(activity) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.no_bluetooth_output_warning),
+                            style = MaterialTheme.typography.caption2,
+                            color = MaterialTheme.colors.error,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                 )
             }
             Text(text = currentBook.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -171,6 +198,10 @@ fun NowPlayingScreen(navController: NavHostController) {
                 CompactChip(
                     onClick = { navController.navigate(Nav.SLEEP_TIMER) },
                     label = { Text("Sleep") },
+                )
+                CompactChip(
+                    onClick = { launchAudioOutputSettings(activity) },
+                    label = { Text("Audio") },
                 )
             }
         }

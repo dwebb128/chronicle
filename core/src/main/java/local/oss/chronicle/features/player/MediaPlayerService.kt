@@ -187,7 +187,7 @@ class MediaPlayerService :
          *
          * @see DefaultLoadControl.Builder.setBufferDurationsMs
          */
-        val EXOPLAYER_BACK_BUFFER_DURATION_MILLIS: Int = 120.seconds.inWholeMilliseconds.toInt()
+        val EXOPLAYER_BACK_BUFFER_DURATION_MILLIS: Int = 5.seconds.inWholeMilliseconds.toInt()
 
         /**
          * Exoplayer min-buffer (the minimum millis of buffer which exo will attempt to keep in
@@ -195,14 +195,33 @@ class MediaPlayerService :
          *
          * @see DefaultLoadControl.Builder.setBufferDurationsMs
          */
-        val EXOPLAYER_MIN_BUFFER_DURATION_MILLIS: Int = 10.seconds.inWholeMilliseconds.toInt()
+        val EXOPLAYER_MIN_BUFFER_DURATION_MILLIS: Int = 2500
 
         /**
          * Exoplayer max-buffer (the maximum duration of buffer which Exoplayer will store in memory)
          *
          * @see DefaultLoadControl.Builder.setBufferDurationsMs
          */
-        val EXOPLAYER_MAX_BUFFER_DURATION_MILLIS: Int = 360.seconds.inWholeMilliseconds.toInt()
+        val EXOPLAYER_MAX_BUFFER_DURATION_MILLIS: Int = 15.seconds.inWholeMilliseconds.toInt()
+
+        /**
+         * Exoplayer buffer for playback (millis of buffer required before starting playback)
+         *
+         * @see DefaultLoadControl.Builder.setBufferDurationsMs
+         */
+        val EXOPLAYER_BUFFER_FOR_PLAYBACK_MS: Int = 1000
+
+        /**
+         * Exoplayer buffer for playback after rebuffer (millis of buffer required before resuming playback)
+         *
+         * @see DefaultLoadControl.Builder.setBufferDurationsMs
+         */
+        val EXOPLAYER_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: Int = 2000
+
+        /**
+         * Exoplayer target buffer bytes cap to prevent OutOfMemoryError on low-memory Wear OS devices.
+         */
+        val EXOPLAYER_TARGET_BUFFER_BYTES: Int = 2 * 1024 * 1024 // 2MB
     }
 
     @Inject

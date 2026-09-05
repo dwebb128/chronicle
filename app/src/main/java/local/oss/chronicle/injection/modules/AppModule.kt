@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import androidx.core.content.ContextCompat
 import androidx.work.WorkManager
 import coil.ImageLoader
+import coil.memory.MemoryCache
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.tonyodev.fetch2.Fetch
@@ -263,5 +264,10 @@ class AppModule(private val app: Application) {
     ): ImageLoader =
         ImageLoader.Builder(app)
             .okHttpClient(okHttpClient)
+            .memoryCache {
+                MemoryCache.Builder(app)
+                    .maxSizePercent(0.10)
+                    .build()
+            }
             .build()
 }

@@ -23,8 +23,11 @@ import local.oss.chronicle.data.sources.plex.PlexHttpDataSourceFactory
 import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import local.oss.chronicle.features.player.*
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_BACK_BUFFER_DURATION_MILLIS
+import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_BUFFER_FOR_PLAYBACK_MS
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MAX_BUFFER_DURATION_MILLIS
 import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MIN_BUFFER_DURATION_MILLIS
+import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_TARGET_BUFFER_BYTES
 import local.oss.chronicle.injection.scopes.ServiceScope
 import local.oss.chronicle.util.SecurityUtils
 import timber.log.Timber
@@ -80,16 +83,18 @@ class ServiceModule(private val service: MediaPlayerService) {
                 ),
             )
             .setLoadControl(
-            // increase buffer size across the board as ExoPlayer defaults are set for video
-            DefaultLoadControl.Builder().setBackBuffer(EXOPLAYER_BACK_BUFFER_DURATION_MILLIS, true)
-                .setBufferDurationsMs(
-                    EXOPLAYER_MIN_BUFFER_DURATION_MILLIS,
-                    EXOPLAYER_MAX_BUFFER_DURATION_MILLIS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
-                )
-                .build(),
-        ).build()
+                DefaultLoadControl.Builder()
+                    .setBackBuffer(EXOPLAYER_BACK_BUFFER_DURATION_MILLIS, true)
+                    .setBufferDurationsMs(
+                        EXOPLAYER_MIN_BUFFER_DURATION_MILLIS,
+                        EXOPLAYER_MAX_BUFFER_DURATION_MILLIS,
+                        EXOPLAYER_BUFFER_FOR_PLAYBACK_MS,
+                        EXOPLAYER_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                    )
+                    .setTargetBufferBytes(EXOPLAYER_TARGET_BUFFER_BYTES)
+                    .setPrioritizeTimeOverSizeThresholds(false)
+                    .build(),
+            ).build()
 
     @Provides
     @ServiceScope
