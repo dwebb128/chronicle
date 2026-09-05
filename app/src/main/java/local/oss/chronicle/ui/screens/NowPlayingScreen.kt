@@ -1,7 +1,11 @@
 package local.oss.chronicle.ui.screens
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
@@ -10,13 +14,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -32,6 +40,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.CompactChip
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.InlineSlider
+import androidx.wear.compose.material.InlineSliderDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
@@ -42,17 +53,23 @@ import local.oss.chronicle.ui.LocalActivityComponent
 import local.oss.chronicle.ui.Nav
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.components.OptionsDialog
-
-import android.content.Intent
-import android.provider.Settings
 import timber.log.Timber
 
+/**
+ * Opens the system Bluetooth/audio-output screen so the listener can pair or connect a headset
+ * (Pixel Buds and the like) without leaving the watch.
+ *
+ * Wear OS ships its own settings app, and which activity answers depends on the OEM and the
+ * platform version, so this tries the Clockwork-specific screen first and falls back to the
+ * AOSP-standard [Settings.ACTION_BLUETOOTH_SETTINGS]. Wear cannot *initiate* a connection to a
+ * specific device from a third-party app — `BluetoothDevice.connect` is a system API — so handing
+ * the listener the picker is as close to "auto-connect to my Pixel Buds" as an app can get.
+ */
 private fun launchAudioOutputSettings(context: Context) {
     val intents =
         listOf(
-            Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
             Intent("com.google.android.clockwork.settings.BLUETOOTH_SETTINGS"),
-            Intent("android.settings.BLUETOOTH_SETTINGS"),
+            Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
         )
     for (intent in intents) {
         try {
@@ -105,6 +122,43 @@ fun NowPlayingScreen(navController: NavHostController) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
+    val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+    var volume by remember {
+        mutableIntStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+    }
+
+    // The slider is not the only thing that moves this stream: the rotary crown below, the
+    // hardware buttons and the system volume panel all do too. Without this the slider would show
+    // a stale value the moment any of them is used.
+    DisposableEffect(audioManager) {
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    val stream =
+                        intent?.getIntExtra(
+                            "android.media.EXTRA_VOLUME_STREAM_TYPE",
+                            -1,
+                        ) ?: -1
+                    if (stream == AudioManager.STREAM_MUSIC) {
+                        volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    }
+                }
+            }
+        // Not exported: only the system sends VOLUME_CHANGED_ACTION, and :app is minSdk 34, so
+        // the flag is always available here.
+        activity.registerReceiver(
+            receiver,
+            IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
+            Context.RECEIVER_NOT_EXPORTED,
+        )
+        // Re-read on (re)attach in case the volume moved while this screen was away.
+        volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        onDispose { activity.unregisterReceiver(receiver) }
+    }
+
     Box(
         modifier =
             Modifier
@@ -116,11 +170,10 @@ fun NowPlayingScreen(navController: NavHostController) {
                         } else {
                             AudioManager.ADJUST_LOWER
                         }
-                    audioManager.adjustStreamVolume(
-                        AudioManager.STREAM_MUSIC,
-                        direction,
-                        AudioManager.FLAG_SHOW_UI,
-                    )
+                    // No FLAG_SHOW_UI: the on-screen slider below already shows the level, and the
+                    // system volume overlay would sit on top of it.
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0)
+                    volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                     true
                 }
                 .focusRequester(focusRequester)
@@ -190,6 +243,29 @@ fun NowPlayingScreen(navController: NavHostController) {
                     )
                 }
             }
+            // Media volume. The rotary crown drives the same stream (see the Box modifier above);
+            // this is the touch equivalent, for listeners who reach for the screen instead.
+            InlineSlider(
+                value = volume,
+                onValueChange = { newVolume ->
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+                    volume = newVolume
+                },
+                valueProgression = 0..maxVolume,
+                decreaseIcon = {
+                    Icon(
+                        imageVector = InlineSliderDefaults.Decrease,
+                        contentDescription = "Lower volume",
+                    )
+                },
+                increaseIcon = {
+                    Icon(
+                        imageVector = InlineSliderDefaults.Increase,
+                        contentDescription = "Raise volume",
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            )
             Row(horizontalArrangement = Arrangement.SpaceEvenly) {
                 CompactChip(
                     onClick = { navController.navigate(Nav.PLAYBACK_SPEED) },
