@@ -17,6 +17,7 @@ import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.model.MediaItemTrack
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
+import local.oss.chronicle.data.sources.plex.PlexConfig
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.notNullValue
 import org.junit.After
@@ -60,6 +61,9 @@ class LibraryViewModelTest {
 
     @Mock
     private lateinit var sharedPreferences: SharedPreferences
+
+    @Mock
+    private lateinit var plexConfig: PlexConfig
 
     private lateinit var viewModel: LibraryViewModel
 
@@ -112,6 +116,7 @@ class LibraryViewModelTest {
         `when`(prefsRepo.hidePlayedAudiobooks).thenReturn(false)
         `when`(librarySyncRepository.isRefreshing).thenReturn(MutableLiveData(false))
         `when`(trackRepository.getAllTracks()).thenReturn(MutableLiveData(emptyList()))
+        `when`(plexConfig.isConnected).thenReturn(MutableLiveData(false))
 
         // Mock SharedPreferences to return null for all keys (will use defaults)
         `when`(sharedPreferences.getString(anyString(), anyString())).thenReturn(null)
@@ -144,6 +149,7 @@ class LibraryViewModelTest {
                     cachedFileManager,
                     librarySyncRepository,
                     sharedPreferences,
+                    plexConfig,
                 )
 
             // Then: Books LiveData should be initialized
@@ -171,6 +177,7 @@ class LibraryViewModelTest {
                     cachedFileManager,
                     librarySyncRepository,
                     sharedPreferences,
+                    plexConfig,
                 )
 
             // Then: Verify getAllBooks() is called (aggregates all libraries)
@@ -201,6 +208,7 @@ class LibraryViewModelTest {
                     cachedFileManager,
                     librarySyncRepository,
                     sharedPreferences,
+                    plexConfig,
                 )
 
             // When: User searches for a book
@@ -226,6 +234,7 @@ class LibraryViewModelTest {
                     cachedFileManager,
                     librarySyncRepository,
                     sharedPreferences,
+                    plexConfig,
                 )
 
             // When: User triggers refresh
@@ -281,6 +290,7 @@ class LibraryViewModelTest {
                     cachedFileManager,
                     librarySyncRepository,
                     sharedPreferences,
+                    plexConfig,
                 )
 
             // Then: getAllTracks should be called (not filtered by library)

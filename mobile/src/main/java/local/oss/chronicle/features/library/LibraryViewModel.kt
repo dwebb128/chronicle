@@ -27,6 +27,7 @@ import local.oss.chronicle.data.model.MediaItemTrack
 import local.oss.chronicle.data.sources.plex.ICachedFileManager
 import local.oss.chronicle.data.sources.plex.ICachedFileManager.CacheStatus.CACHED
 import local.oss.chronicle.data.sources.plex.ICachedFileManager.CacheStatus.NOT_CACHED
+import local.oss.chronicle.data.sources.plex.PlexConfig
 import local.oss.chronicle.util.*
 import local.oss.chronicle.views.BottomSheetChooser
 import local.oss.chronicle.views.BottomSheetChooser.BottomChooserListener
@@ -43,6 +44,7 @@ class LibraryViewModel(
     private val cachedFileManager: ICachedFileManager,
     private val librarySyncRepository: LibrarySyncRepository,
     sharedPreferences: SharedPreferences,
+    private val plexConfig: PlexConfig,
 ) : ViewModel() {
     @Suppress("UNCHECKED_CAST")
     class Factory
@@ -54,6 +56,7 @@ class LibraryViewModel(
             private val cachedFileManager: ICachedFileManager,
             private val librarySyncRepository: LibrarySyncRepository,
             private val sharedPreferences: SharedPreferences,
+            private val plexConfig: PlexConfig,
         ) : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(LibraryViewModel::class.java)) {
@@ -64,6 +67,7 @@ class LibraryViewModel(
                         cachedFileManager,
                         librarySyncRepository,
                         sharedPreferences,
+                        plexConfig,
                     ) as T
                 } else {
                     throw IllegalArgumentException(
@@ -72,6 +76,38 @@ class LibraryViewModel(
                 }
             }
         }
+
+    private val serverConnectionObserver =
+        Observer<Boolean> { isConnectedToServer ->
+            if (isConnectedToServer) {
+                viewModelScope.launch(Injector.get().unhandledExceptionHandler()) {
+                    val millisSinceLastRefresh =
+                        System.currentTimeMillis() - prefsRepo.lastRefreshTimeStamp
+                    val minutesSinceLastRefresh = millisSinceLastRefresh / 1000 / 60
+                    val bookCount = bookRepository.getBookCount()
+                    val shouldRefresh =
+                        minutesSinceLastRefresh > prefsRepo.refreshRateMinutes || bookCount == 0
+                    Timber.i(
+                        """$minutesSinceLastRefresh minutes since last libraryrefresh,
+                    |${prefsRepo.refreshRateMinutes} needed
+                        """.trimMargin(),
+                    )
+                    if (shouldRefresh) {
+                        refreshData()
+                    }
+                }
+            }
+        }
+
+    init {
+        serverConnectionObserver.onChanged(plexConfig.isConnected.value ?: true)
+        plexConfig.isConnected.observeForever(serverConnectionObserver)
+    }
+
+    override fun onCleared() {
+        plexConfig.isConnected.removeObserver(serverConnectionObserver)
+        super.onCleared()
+    }
 
     val isRefreshing = librarySyncRepository.isRefreshing
 
@@ -211,27 +247,7 @@ class LibraryViewModel(
         }
     }
 
-    private val serverConnectionObserver =
-        Observer<Boolean> { isConnectedToServer ->
-            if (isConnectedToServer) {
-                viewModelScope.launch(Injector.get().unhandledExceptionHandler()) {
-                    val millisSinceLastRefresh =
-                        System.currentTimeMillis() - prefsRepo.lastRefreshTimeStamp
-                    val minutesSinceLastRefresh = millisSinceLastRefresh / 1000 / 60
-                    val bookCount = bookRepository.getBookCount()
-                    val shouldRefresh =
-                        minutesSinceLastRefresh > prefsRepo.refreshRateMinutes || bookCount == 0
-                    Timber.i(
-                        """$minutesSinceLastRefresh minutes since last libraryrefresh,
-                    |${prefsRepo.refreshRateMinutes} needed
-                        """.trimMargin(),
-                    )
-                    if (shouldRefresh) {
-                        refreshData()
-                    }
-                }
-            }
-        }
+
 
     fun disableOfflineMode() {
         prefsRepo.offlineMode = false

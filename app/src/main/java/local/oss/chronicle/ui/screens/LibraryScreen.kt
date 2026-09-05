@@ -46,6 +46,7 @@ fun LibraryScreen(navController: NavHostController) {
                 cachedFileManager = Injector.get().cachedFileManager(),
                 librarySyncRepository = Injector.get().librarySyncRepo(),
                 sharedPreferences = Injector.get().sharedPrefs(),
+                plexConfig = Injector.get().plexConfig(),
             )
         }
     val viewModel: LibraryViewModel = viewModel(factory = factory)

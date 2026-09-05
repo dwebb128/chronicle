@@ -62,33 +62,38 @@ class LibrarySyncRepository
                     withContext(Dispatchers.Main) {
                         _isRefreshing.value = true
                     }
-                    bookRepository.refreshDataPaginated()
-                    trackRepository.refreshDataPaginated()
+                    val allLibraries = libraryRepository.getAllLibraries().first()
+                    if (allLibraries.isNotEmpty()) {
+                        syncAllLibraries()
+                    } else {
+                        bookRepository.refreshDataPaginated()
+                        trackRepository.refreshDataPaginated()
 
-                    // TODO: Loading all data into memory :O
-                    val audiobooks = bookRepository.getAllBooksAsync()
-                    val tracks = trackRepository.getAllTracksAsync()
+                        // TODO: Loading all data into memory :O
+                        val audiobooks = bookRepository.getAllBooksAsync()
+                        val tracks = trackRepository.getAllTracksAsync()
 
-                    // Group tracks by parent book ID for O(n) lookup instead of O(n²) filtering
-                    val tracksByBook = tracks.groupBy { it.parentKey }
+                        // Group tracks by parent book ID for O(n) lookup instead of O(n²) filtering
+                        val tracksByBook = tracks.groupBy { it.parentKey }
 
-                    audiobooks.forEach { book ->
-                        // Not necessarily in the right order, but it doesn't matter for updateTrackData
-                        val tracksInAudiobook = tracksByBook[book.id] ?: emptyList()
-                        bookRepository.updateTrackData(
-                            bookId = book.id,
-                            bookProgress = tracksInAudiobook.getProgress(),
-                            bookDuration = tracksInAudiobook.getDuration(),
-                            trackCount = tracksInAudiobook.size,
-                        )
+                        audiobooks.forEach { book ->
+                            // Not necessarily in the right order, but it doesn't matter for updateTrackData
+                            val tracksInAudiobook = tracksByBook[book.id] ?: emptyList()
+                            bookRepository.updateTrackData(
+                                bookId = book.id,
+                                bookProgress = tracksInAudiobook.getProgress(),
+                                bookDuration = tracksInAudiobook.getDuration(),
+                                trackCount = tracksInAudiobook.size,
+                            )
+                        }
+
+                        collectionsRepository.refreshCollectionsPaginated()
                     }
-
-                    collectionsRepository.refreshCollectionsPaginated()
 
                     // Update library item counts after syncing books
                     Timber.d("Updating library item counts")
-                    val allLibraries = libraryRepository.getAllLibraries().first()
-                    allLibraries.forEach { library ->
+                    val currentLibraries = libraryRepository.getAllLibraries().first()
+                    currentLibraries.forEach { library ->
                         val bookCount = bookRepository.getBookCountForLibrary(library.id)
                         libraryRepository.updateItemCount(library.id, bookCount)
                         Timber.d("Updated item count to $bookCount for library ${library.name}")

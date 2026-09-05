@@ -2,7 +2,7 @@
 
 [versions]
 activityCompose = "1.9.3"
-agp = "9.2.1"
+agp = "9.4.0"
 androidxTest = "1.6.1" # 1.7.0 causes KSP/Dagger compatibility issues
 androidxTestCore = "1.5.0"
 androidxTestExt = "1.3.0"
@@ -19,7 +19,7 @@ inferAnnotation = "0.18.0"
 junit = "4.13.2"
 kotlin = "2.2.10"
 kotlinStdlib = "2.1.0"
-ksp = "2.3.2"
+ksp = "2.3.6"
 ktlint = "12.1.2"
 localBroadcastManager = "1.1.0"
 mediaCompat = "1.7.0"
