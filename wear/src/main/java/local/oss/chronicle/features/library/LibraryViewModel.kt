@@ -141,7 +141,7 @@ class LibraryViewModel(
             sharedPreferences,
         )
 
-    private val sortKey =
+    val sortKey =
         StringPreferenceLiveData(KEY_BOOK_SORT_BY, SORT_KEY_TITLE, sharedPreferences)
     val isOffline = BooleanPreferenceLiveData(KEY_OFFLINE_MODE, false, sharedPreferences)
 
@@ -339,5 +339,41 @@ class LibraryViewModel(
     fun toggleHidePlayedAudiobooks() {
         Timber.i("toggleHidePlayedAudiobooks")
         prefsRepo.hidePlayedAudiobooks = !prefsRepo.hidePlayedAudiobooks
+    }
+
+    /** Sets the key the library is ordered by. Must be one of [SUPPORTED_SORT_KEYS]. */
+    fun setSortKey(key: String) {
+        require(key in SUPPORTED_SORT_KEYS) { "Unsupported sort key: $key" }
+        prefsRepo.bookSortKey = key
+    }
+
+    /** Sets whether the library is ordered descending. */
+    fun setSortDescending(isDescending: Boolean) {
+        prefsRepo.isLibrarySortedDescending = isDescending
+    }
+
+    /** Sets whether books that have been played through are hidden from the library. */
+    fun setHidePlayedAudiobooks(isHidden: Boolean) {
+        prefsRepo.hidePlayedAudiobooks = isHidden
+    }
+
+    companion object {
+        /**
+         * The sort keys [books]'s comparator actually handles, in the order they are offered.
+         *
+         * Deliberately not [Audiobook.SORT_KEYS], which also lists `release_date`, `rating` and
+         * `critic_rating` — none of which the comparator has a branch for, so selecting one would
+         * throw [NoWhenBranchMatchedException] the next time the library was sorted.
+         */
+        val SUPPORTED_SORT_KEYS =
+            listOf(
+                SORT_KEY_TITLE,
+                SORT_KEY_AUTHOR,
+                SORT_KEY_DATE_ADDED,
+                SORT_KEY_DATE_PLAYED,
+                SORT_KEY_DURATION,
+                SORT_KEY_PLAYS,
+                SORT_KEY_YEAR,
+            )
     }
 }

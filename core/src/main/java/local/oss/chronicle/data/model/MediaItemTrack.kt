@@ -87,23 +87,26 @@ data class MediaItemTrack(
         }
 
         /**
-         * Merges updated local fields with a network copy of the book. Prefers network metadata,
-         * but always preserves local [progress] and [lastViewedAt] to avoid race conditions
-         * where sync operations overwrite in-progress playback.
+         * Merges a network copy of a track with the local one. Network metadata wins throughout;
+         * [progress] and [lastViewedAt] go to whichever side listened last, so a position set on
+         * a phone reaches the watch and vice versa. [cached] is always local — it describes this
+         * device's filesystem and does not exist on the server.
          *
-         * Always retains [cached] field from local copy.
-         *
-         * Note: Local device is the source of truth for playback progress.
+         * Both sides' [lastViewedAt] are milliseconds; see [PlexDirectory.lastViewedAtMillis] for
+         * why that needs saying.
          */
         fun merge(
             network: MediaItemTrack,
             local: MediaItemTrack,
             forceUseNetwork: Boolean = false,
-        ) = if (forceUseNetwork) {
-            Timber.i("Force using network track: $network")
+        ) = if (forceUseNetwork || network.lastViewedAt > local.lastViewedAt) {
+            // The server holds a listen this device has not seen — from a phone, or another watch.
+            // Taking its position is the whole point of syncing progress through Plex.
             network.copy(cached = local.cached)
         } else {
-            // Always preserve local progress and lastViewedAt to prevent race conditions
+            // This device listened more recently than the server knows about. Keep the local
+            // position: while playback is running `ProgressUpdater` writes it every second, so a
+            // sync landing mid-playback must not roll it back to whatever was last scrobbled.
             network.copy(
                 cached = local.cached,
                 lastViewedAt = local.lastViewedAt,
@@ -129,7 +132,7 @@ data class MediaItemTrack(
                 progress = networkTrack.viewOffset,
                 media = networkTrack.media[0].part[0].key,
                 album = networkTrack.parentTitle,
-                lastViewedAt = networkTrack.lastViewedAt,
+                lastViewedAt = networkTrack.lastViewedAtMillis,
                 updatedAt = networkTrack.updatedAt,
                 size = networkTrack.media[0].part[0].size,
             )
@@ -165,7 +168,7 @@ data class MediaItemTrack(
      * @see <a href="https://github.com/[repo]/blob/main/docs/ARCHITECTURE.md#bandwidth-handling">ARCHITECTURE.md - Bandwidth Handling</a>
      */
     fun getTrackSource(): String {
-        return if (cached) {
+        return if (cached && isCachedFileComplete()) {
             // Use local file if downloaded
             File(Injector.get().prefsRepo().cachedMediaDir, getCachedFileName()).toURI().toString()
         } else {
@@ -193,6 +196,35 @@ data class MediaItemTrack(
             // Build full URL with library-specific server
             buildServerUrl(serverUrl, media)
         }
+    }
+
+    /**
+     * Whether this track's downloaded file is actually on disk and whole.
+     *
+     * [cached] is a database column, and the file it describes can be gone or half-written without
+     * it: a download interrupted partway leaves a short file at the final path, and files deleted
+     * outside the app leave none at all. Either way, handing ExoPlayer a `file://` URI it cannot
+     * fully read surfaces as a source error, or as playback that starts and then stalls on a seek
+     * past what was written — with nothing pointing at the download as the cause. Streaming
+     * instead is always recoverable.
+     *
+     * [size] is what Plex reported for the file; it can be absent (0), in which case existence is
+     * the most that can be checked.
+     */
+    private fun isCachedFileComplete(): Boolean {
+        val file = File(Injector.get().prefsRepo().cachedMediaDir, getCachedFileName())
+        if (!file.exists()) {
+            Timber.w("Track $id is marked cached but its file is missing; streaming instead")
+            return false
+        }
+        if (size > 0L && file.length() < size) {
+            Timber.w(
+                "Track $id is marked cached but only ${file.length()} of $size bytes " +
+                    "are on disk; streaming instead",
+            )
+            return false
+        }
+        return true
     }
 
     /**

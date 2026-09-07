@@ -14,6 +14,7 @@ object Nav {
     const val CHOOSE_SERVER = "choose_server"
     const val CHOOSE_LIBRARY = "choose_library"
     const val LIBRARY = "library"
+    const val LIBRARY_FILTER = "library_filter"
     const val NOW_PLAYING = "now_playing"
     const val PLAYBACK_SPEED = "playback_speed"
     const val SLEEP_TIMER = "sleep_timer"

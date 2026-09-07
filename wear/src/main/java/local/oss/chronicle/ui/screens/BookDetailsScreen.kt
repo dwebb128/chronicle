@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +29,7 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
@@ -45,6 +47,10 @@ import local.oss.chronicle.ui.components.ChapterRow
 import local.oss.chronicle.ui.components.LoadingScreen
 import local.oss.chronicle.ui.components.NowPlayingChip
 import local.oss.chronicle.ui.components.OptionsDialog
+
+/** Sized to sit just outside the 52dp download [Button] rather than on top of its icon. */
+private val DOWNLOAD_RING_SIZE = 56.dp
+private val DOWNLOAD_RING_STROKE = 3.dp
 
 /**
  * Route: `book_details/{bookId}` (never the title — titles can contain slashes, PLAN.md 5.3).
@@ -147,23 +153,28 @@ fun BookDetailsScreen(
                             contentDescription = if (isBookPlaying) "Pause" else "Play",
                         )
                     }
-                    Button(onClick = { viewModel.onCacheButtonClick() }) {
-                        Image(
-                            painter =
-                                painterResource(
-                                    if (cacheStatus == CACHED) {
-                                        local.oss.chronicle.core.R.drawable.ic_cloud_done_white
-                                    } else {
-                                        local.oss.chronicle.core.R.drawable.ic_cloud_download_white
+                    Box(contentAlignment = Alignment.Center) {
+                        Button(onClick = { viewModel.onCacheButtonClick() }) {
+                            Image(
+                                painter =
+                                    painterResource(
+                                        if (cacheStatus == CACHED) {
+                                            local.oss.chronicle.core.R.drawable.ic_cloud_done_white
+                                        } else {
+                                            local.oss.chronicle.core.R.drawable.ic_cloud_download_white
+                                        },
+                                    ),
+                                contentDescription =
+                                    when (cacheStatus) {
+                                        CACHED -> "Downloaded"
+                                        CACHING -> "Downloading"
+                                        NOT_CACHED -> "Download"
                                     },
-                                ),
-                            contentDescription =
-                                when (cacheStatus) {
-                                    CACHED -> "Downloaded"
-                                    CACHING -> "Downloading"
-                                    NOT_CACHED -> "Download"
-                                },
-                        )
+                            )
+                        }
+                        if (cacheStatus == CACHING) {
+                            DownloadProgressRing(viewModel)
+                        }
                     }
                     Button(onClick = { viewModel.toggleWatched() }) {
                         Image(
@@ -179,6 +190,9 @@ fun BookDetailsScreen(
                         )
                     }
                 }
+            }
+            if (cacheStatus == CACHING) {
+                item { DownloadProgressLabel(viewModel) }
             }
             item {
                 Chip(
@@ -217,6 +231,47 @@ private fun BookProgress(viewModel: AudiobookDetailsViewModel) {
     Text(
         text = progressString,
         style = MaterialTheme.typography.caption1,
+        color = MaterialTheme.colors.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+    )
+}
+
+/**
+ * A ring around the download button tracking how much of the book is on disk. Its own composable so
+ * the progress ticks invalidate the ring rather than the whole screen.
+ *
+ * Indeterminate until the first percentage arrives, so the control never reads "0%" while the
+ * download is in fact starting.
+ */
+@Composable
+private fun DownloadProgressRing(viewModel: AudiobookDetailsViewModel) {
+    val progress by viewModel.downloadProgress.observeAsState()
+    val percent = progress
+    if (percent == null) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(DOWNLOAD_RING_SIZE),
+            strokeWidth = DOWNLOAD_RING_STROKE,
+        )
+    } else {
+        CircularProgressIndicator(
+            progress = percent / 100f,
+            modifier = Modifier.size(DOWNLOAD_RING_SIZE),
+            strokeWidth = DOWNLOAD_RING_STROKE,
+        )
+    }
+}
+
+/** The same figure in words, for when a ring on a 48dp button is too small to read precisely. */
+@Composable
+private fun DownloadProgressLabel(viewModel: AudiobookDetailsViewModel) {
+    val progress by viewModel.downloadProgress.observeAsState()
+    Text(
+        text =
+            progress
+                ?.let { stringResource(R.string.downloading_percent, it) }
+                ?: stringResource(R.string.downloading),
+        style = MaterialTheme.typography.caption2,
         color = MaterialTheme.colors.onSurfaceVariant,
         textAlign = TextAlign.Center,
         maxLines = 1,

@@ -9,6 +9,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -16,6 +17,7 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Text
 import local.oss.chronicle.R
@@ -66,6 +68,21 @@ fun LibraryScreen(navController: NavHostController) {
         ) {
             item {
                 NowPlayingChip(navController = navController)
+            }
+            // Sorting and filtering get their own screen rather than the phone's bottom sheet;
+            // see LibraryFilterScreen.
+            item {
+                CompactChip(
+                    onClick = { navController.navigate(Nav.LIBRARY_FILTER) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            text = stringResource(R.string.library_sort_and_filter),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                )
             }
             if (books.isEmpty()) {
                 item { Text(text = "Your library is empty") }

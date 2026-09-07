@@ -144,6 +144,14 @@ class AudiobookDetailsViewModel(
             }
         }
 
+    /**
+     * This book's download completion, 0..100, or null when it is not downloading. Downloading a
+     * long audiobook over a watch's radio takes minutes, and until now the only feedback was a
+     * spinner — indistinguishable from a download that had silently stalled.
+     */
+    val downloadProgress: LiveData<Int?> =
+        cachedFileManager.bookDownloadProgress.map { it[inputAudiobook.id] }
+
     val cacheIconTint =
         cacheStatus.map { status ->
             return@map when (status) {

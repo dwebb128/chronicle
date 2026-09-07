@@ -24,6 +24,7 @@ import local.oss.chronicle.ui.screens.BookDetailsScreen
 import local.oss.chronicle.ui.screens.ChooseLibraryScreen
 import local.oss.chronicle.ui.screens.ChooseServerScreen
 import local.oss.chronicle.ui.screens.ChooseUserScreen
+import local.oss.chronicle.ui.screens.LibraryFilterScreen
 import local.oss.chronicle.ui.screens.LibraryScreen
 import local.oss.chronicle.ui.screens.LinkAccountScreen
 import local.oss.chronicle.ui.screens.NowPlayingScreen
@@ -139,6 +140,9 @@ fun ChronicleWearApp(
 
                 // fun LibraryScreen(navController: NavHostController)
                 composable(Nav.LIBRARY) { LibraryScreen(navController) }
+
+                /** Sorting and filtering for the library list. */
+                composable(Nav.LIBRARY_FILTER) { LibraryFilterScreen() }
 
                 // fun BookDetailsScreen(navController: NavHostController, bookId: String)
                 composable(

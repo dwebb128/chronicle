@@ -74,7 +74,7 @@ data class Audiobook(
             year = dir.year.takeIf { it != 0 } ?: dir.parentYear,
             addedAt = dir.addedAt,
             updatedAt = dir.updatedAt,
-            lastViewedAt = dir.lastViewedAt,
+            lastViewedAt = dir.lastViewedAtMillis,
             viewedLeafCount = dir.viewedLeafCount,
             leafCount = dir.leafCount,
             viewCount = dir.viewCount,

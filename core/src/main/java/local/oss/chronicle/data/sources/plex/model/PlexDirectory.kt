@@ -44,7 +44,18 @@ data class PlexDirectory(
     val collections: List<CollectionWrapper>? = null,
     val childCount: Long = 0L,
     val collectionSort: String = PLEX_COLLECTION_SORT_TYPE_RELEASE_DATE.toString(),
-)
+) {
+    /**
+     * [lastViewedAt] in milliseconds. Plex reports its timestamps as whole seconds since the epoch,
+     * but everything that writes this field locally uses [System.currentTimeMillis], so the two
+     * were a thousand-fold apart in the same column: a locally-played row always compared as newer
+     * than anything the server could report, whichever was actually more recent.
+     *
+     * Zero means "never viewed" and must stay zero rather than becoming the epoch.
+     */
+    val lastViewedAtMillis: Long
+        get() = if (lastViewedAt == 0L) 0L else lastViewedAt * 1000L
+}
 
 @JsonClass(generateAdapter = true)
 data class CollectionWrapper(val tag: String? = null)

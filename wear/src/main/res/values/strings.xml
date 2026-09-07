@@ -87,4 +87,17 @@
     <string name="pin">Pin</string>
     <string name="playback_error_unknown">Unknown playback error</string>
     <string name="settings_version_title">Version information</string>
+    <string name="downloading">Downloading…</string>
+    <string name="downloading_percent">Downloading %1$d%%</string>
+    <string name="library_sort_and_filter">Sort &amp; filter</string>
+    <string name="library_hide_played">Hide played books</string>
+    <string name="library_sort_descending">Sort descending</string>
+    <string name="sort_by">Sort by</string>
+    <string name="sort_by_title">Title</string>
+    <string name="sort_by_author">Author</string>
+    <string name="sort_by_year">Year</string>
+    <string name="sort_by_date_added">Date added</string>
+    <string name="sort_by_date_played">Date played</string>
+    <string name="sort_by_plays">Plays</string>
+    <string name="sort_by_duration">Duration</string>
 </resources>
