@@ -406,4 +406,80 @@ class ProgressUpdaterTest {
 
     // Normal track operation (no mismatch) is already verified by existing tests like
     // "updateProgress reads from PlaybackStateController not database"
+
+    @Test
+    fun `a book genuinely near its end is marked watched once, not once per tick`() =
+        testScope.runTest {
+            val bookId = "plex:100"
+            val trackId = "plex:101"
+            val book = Audiobook(id = bookId, libraryId = "plex:library:1", source = PlexMediaSource.MEDIA_SOURCE_ID_PLEX, title = "Test Book")
+            // 30 minutes total; the tick lands 90 seconds from the end - inside the 2-minute
+            // window and well past the halfway point, so this should count as finished.
+            val bookDurationMs = 30 * 60 * 1000L
+            val trackProgressMs = bookDurationMs - 90_000L
+            val track = MediaItemTrack(id = trackId, parentKey = bookId, title = "Track 1", duration = bookDurationMs, progress = 0L)
+
+            val stateFlow =
+                MutableStateFlow(
+                    PlaybackState(
+                        audiobook = book,
+                        tracks = listOf(track),
+                        currentTrackIndex = 0,
+                        currentTrackPositionMs = trackProgressMs,
+                        isPlaying = true,
+                    ),
+                )
+            whenever(playbackStateController.state).thenReturn(stateFlow)
+
+            // Three ticks in a row, as the real 1-second loop would produce while still inside
+            // the finishing window.
+            repeat(3) {
+                progressUpdater.updateProgress(
+                    trackId = trackId,
+                    playbackState = MediaPlayerService.PLEX_STATE_PLAYING,
+                    progress = trackProgressMs,
+                    forceNetworkUpdate = false,
+                )
+            }
+            testScheduler.advanceUntilIdle()
+
+            verify(bookRepository, org.mockito.kotlin.times(1)).setWatched(bookId)
+        }
+
+    @Test
+    fun `a book with an implausibly small computed duration is not marked watched`() =
+        testScope.runTest {
+            // A stale or partially-loaded track list can make `bookDuration` far smaller than the
+            // book really is. Here the tick lands within the absolute 2-minute window of that
+            // (wrong) duration, but nowhere near halfway through it by proportion - the shape a
+            // real near-the-end listen never has - so this must not fire.
+            val bookId = "plex:100"
+            val trackId = "plex:101"
+            val book = Audiobook(id = bookId, libraryId = "plex:library:1", source = PlexMediaSource.MEDIA_SOURCE_ID_PLEX, title = "Test Book")
+            val bookDurationMs = 90_000L
+            val trackProgressMs = 5_000L
+            val track = MediaItemTrack(id = trackId, parentKey = bookId, title = "Track 1", duration = bookDurationMs, progress = 0L)
+
+            val stateFlow =
+                MutableStateFlow(
+                    PlaybackState(
+                        audiobook = book,
+                        tracks = listOf(track),
+                        currentTrackIndex = 0,
+                        currentTrackPositionMs = trackProgressMs,
+                        isPlaying = true,
+                    ),
+                )
+            whenever(playbackStateController.state).thenReturn(stateFlow)
+
+            progressUpdater.updateProgress(
+                trackId = trackId,
+                playbackState = MediaPlayerService.PLEX_STATE_PLAYING,
+                progress = trackProgressMs,
+                forceNetworkUpdate = false,
+            )
+            testScheduler.advanceUntilIdle()
+
+            verify(bookRepository, never()).setWatched(any())
+        }
 }

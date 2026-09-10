@@ -119,4 +119,53 @@ class MediaItemTrackMergeTest {
 
         assertThat(converted.lastViewedAt, `is`(0L))
     }
+
+    @Test
+    fun `a newer network timestamp with far less progress does not erase local progress`() {
+        // Simulates a clock-skewed or stale-view-state network read: the server compares as
+        // "newer" but reports almost no progress against a local position that is well underway.
+        val merged =
+            MediaItemTrack.merge(
+                network = track(progress = 5_000L, lastViewedAt = 5_000L),
+                local = track(progress = 300_000L, lastViewedAt = 1_000L),
+            )
+
+        assertThat(merged.progress, `is`(300_000L))
+    }
+
+    @Test
+    fun `forceUseNetwork still applies a genuine regression, since that is an explicit user action`() {
+        val merged =
+            MediaItemTrack.merge(
+                network = track(progress = 5_000L, lastViewedAt = 5_000L),
+                local = track(progress = 300_000L, lastViewedAt = 1_000L),
+                forceUseNetwork = true,
+            )
+
+        assertThat(merged.progress, `is`(5_000L))
+    }
+
+    @Test
+    fun `a moderate intentional rewind on another device still crosses normally`() {
+        // The regression guard is deliberately generous: giving back less than half of a modest
+        // local position is treated as a real rewind, not a lost-place failure.
+        val merged =
+            MediaItemTrack.merge(
+                network = track(progress = 40_000L, lastViewedAt = 5_000L),
+                local = track(progress = 60_000L, lastViewedAt = 1_000L),
+            )
+
+        assertThat(merged.progress, `is`(40_000L))
+    }
+
+    @Test
+    fun `small local progress is not protected, so an early legitimate reset still applies`() {
+        val merged =
+            MediaItemTrack.merge(
+                network = track(progress = 0L, lastViewedAt = 5_000L),
+                local = track(progress = 10_000L, lastViewedAt = 1_000L),
+            )
+
+        assertThat(merged.progress, `is`(0L))
+    }
 }
