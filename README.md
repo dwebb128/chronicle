@@ -44,6 +44,13 @@ See [docs/INSTALLING.md](docs/INSTALLING.md) for how to build both apps and side
 Pixel phone and a Pixel Watch (or their emulators). On Ubuntu,
 [docs/EMULATOR-UBUNTU.md](docs/EMULATOR-UBUNTU.md) sets up both emulators from scratch.
 
+### Contributing this upstream
+
+This fork's Wear OS support started as a downstream addition; the goal is to see the useful parts of
+it land upstream rather than live only here. [docs/UPSTREAM_CONTRIBUTION_PLAN.md](docs/UPSTREAM_CONTRIBUTION_PLAN.md)
+lays out the plan — which repo "upstream" actually means for this fork, why the current branch can't
+go up as one piece, and the staged sequence proposed instead.
+
 ### Reporting Bugs
 
 Found a bug? Please report it in the [GitHub Issues](https://github.com/germann/chronicle/issues) section. Your feedback helps improve the app for everyone!
