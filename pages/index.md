@@ -5,13 +5,15 @@ title: Home
 
 # Chronicle Epilogue
 
-**Audiobook Player for Plex**
+**A standalone Wear OS audiobook player for Plex**
 
-Stream and enjoy your audiobook collection from your Plex server with a dedicated Android app designed specifically for audiobook listeners.
+Stream and enjoy your audiobook collection from your Plex server right on your wrist. Chronicle Epilogue runs as a standalone app on Wear OS (Pixel Watch and compatible devices) — no phone required once it's set up.
 
 ![Chronicle Epilogue Feature Graphic](assets/images/feature-graphic.png)
 
 ## Screenshots
+
+*The screenshots below are from the earlier phone version of the app and do not yet reflect the Wear OS UI.*
 
 <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
   <img src="assets/images/home.png" alt="Home Screen" width="200" />
@@ -24,9 +26,8 @@ Stream and enjoy your audiobook collection from your Plex server with a dedicate
 
 ## Key Features
 
-- 🎧 **Stream audiobooks from your Plex server** - Access your entire audiobook collection anywhere
+- 🎧 **Stream audiobooks from your Plex server** - Access your entire audiobook collection right on your watch
 - 📥 **Download for offline listening** - Enjoy your audiobooks even without an internet connection
-- 🚗 **Android Auto support** - Safe and convenient listening while driving
 - ⏰ **Sleep timer** - Fall asleep to your favorite audiobooks without worry
 - ⚡ **Playback speed control** - Listen at your preferred pace (0.5x to 3.0x)
 - 📖 **Chapter support** - Navigate through audiobooks with ease

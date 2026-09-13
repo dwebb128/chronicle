@@ -9,9 +9,9 @@ captures/
 bin/
 gen/
 target/
-app/freeAsInBeer
-app/googlePlay
-app/release
+wear/freeAsInBeer
+wear/googlePlay
+wear/release
 plans/
 
 # android studio files
@@ -52,3 +52,9 @@ Desktop.ini
 ehthumbs.db
 Icon?
 Thumbs.db
+
+# Kotlin compiler daemon scratch files
+.kotlin/
+
+# Local SDK pointer written by the build environment
+local.properties

@@ -1,5 +1,7 @@
 # Library & Browsing
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's library browsing features, including the home screen, library view, search, collections, and audiobook details.
 
 ## Home Screen
