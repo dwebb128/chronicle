@@ -43,7 +43,8 @@ class DownloadNotificationWorker(
 
     private val cancelAllDesc =
         applicationContext.getString(R.string.download_notification_cancel_all)
-    private val cancelAllIntent = Intent(ACTION_CANCEL_ALL_DOWNLOADS)
+    private val cancelAllIntent =
+        Intent(ACTION_CANCEL_ALL_DOWNLOADS).setPackage(applicationContext.packageName)
     private val cancelAllPendingIntent =
         PendingIntent.getBroadcast(
             applicationContext,
@@ -450,6 +451,7 @@ class DownloadNotificationWorker(
                 applicationContext,
                 ACTION_CANCEL_BOOK_DOWNLOAD_ID + bookId.hashCode(),
                 Intent(ACTION_CANCEL_BOOK_DOWNLOAD).apply {
+                    setPackage(applicationContext.packageName)
                     putExtra(KEY_BOOK_ID, bookId)
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
