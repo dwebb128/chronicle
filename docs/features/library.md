@@ -51,7 +51,7 @@ flowchart LR
 **Key Files**:
 - [`CollectionsFragment`](../../app/src/main/java/local/oss/chronicle/features/collections/CollectionsFragment.kt) - Collection list
 - [`CollectionDetailsFragment`](../../app/src/main/java/local/oss/chronicle/features/collections/CollectionDetailsFragment.kt) - Books in collection
-- [`CollectionsRepository`](../../app/src/main/java/local/oss/chronicle/data/local/CollectionsRepository.kt) - Data management
+- [`CollectionsRepository`](../../core/src/main/java/local/oss/chronicle/data/local/CollectionsRepository.kt) - Data management
 
 ---
 

@@ -86,11 +86,11 @@ Located in [`data/model/`](../../app/src/main/java/local/oss/chronicle/data/mode
 
 | Model | Purpose |
 |-------|---------|
-| [`Audiobook`](../../app/src/main/java/local/oss/chronicle/data/model/Audiobook.kt) | Core audiobook entity with metadata |
-| [`MediaItemTrack`](../../app/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt) | Individual audio track/file |
-| [`Chapter`](../../app/src/main/java/local/oss/chronicle/data/model/Chapter.kt) | Chapter marker within a track |
-| [`Collection`](../../app/src/main/java/local/oss/chronicle/data/model/Collection.kt) | Plex collection |
-| [`PlexLibrary`](../../app/src/main/java/local/oss/chronicle/data/model/PlexLibrary.kt) | Plex library information |
+| [`Audiobook`](../../core/src/main/java/local/oss/chronicle/data/model/Audiobook.kt) | Core audiobook entity with metadata |
+| [`MediaItemTrack`](../../core/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt) | Individual audio track/file |
+| [`Chapter`](../../core/src/main/java/local/oss/chronicle/data/model/Chapter.kt) | Chapter marker within a track |
+| [`Collection`](../../core/src/main/java/local/oss/chronicle/data/model/Collection.kt) | Plex collection |
+| [`PlexLibrary`](../../core/src/main/java/local/oss/chronicle/data/model/PlexLibrary.kt) | Plex library information |
 
 ### Business Logic Distribution
 
@@ -114,15 +114,15 @@ Located in [`data/local/`](../../app/src/main/java/local/oss/chronicle/data/loca
 
 | Component | Purpose |
 |-----------|---------|
-| [`BookDatabase.kt`](../../app/src/main/java/local/oss/chronicle/data/local/BookDatabase.kt) | Room database for audiobook metadata |
-| [`BookRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) | Audiobook data access |
-| [`TrackDatabase.kt`](../../app/src/main/java/local/oss/chronicle/data/local/TrackDatabase.kt) | Room database for audio tracks |
-| [`TrackRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) | Track data access |
-| [`ChapterDatabase.kt`](../../app/src/main/java/local/oss/chronicle/data/local/ChapterDatabase.kt) | Room database for chapters |
-| [`ChapterRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt) | Chapter data access |
-| [`CollectionsDatabase.kt`](../../app/src/main/java/local/oss/chronicle/data/local/CollectionsDatabase.kt) | Room database for collections |
-| [`CollectionsRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/CollectionsRepository.kt) | Collection data access |
-| [`SharedPreferencesPrefsRepo.kt`](../../app/src/main/java/local/oss/chronicle/data/local/SharedPreferencesPrefsRepo.kt) | App preferences storage |
+| [`BookDatabase.kt`](../../core/src/main/java/local/oss/chronicle/data/local/BookDatabase.kt) | Room database for audiobook metadata |
+| [`BookRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) | Audiobook data access |
+| [`TrackDatabase.kt`](../../core/src/main/java/local/oss/chronicle/data/local/TrackDatabase.kt) | Room database for audio tracks |
+| [`TrackRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) | Track data access |
+| [`ChapterDatabase.kt`](../../core/src/main/java/local/oss/chronicle/data/local/ChapterDatabase.kt) | Room database for chapters |
+| [`ChapterRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt) | Chapter data access |
+| [`CollectionsDatabase.kt`](../../core/src/main/java/local/oss/chronicle/data/local/CollectionsDatabase.kt) | Room database for collections |
+| [`CollectionsRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/CollectionsRepository.kt) | Collection data access |
+| [`SharedPreferencesPrefsRepo.kt`](../../core/src/main/java/local/oss/chronicle/data/local/SharedPreferencesPrefsRepo.kt) | App preferences storage |
 
 ### Remote Data Sources
 
@@ -130,17 +130,17 @@ Located in [`data/sources/plex/`](../../app/src/main/java/local/oss/chronicle/da
 
 | Component | Purpose |
 |-----------|---------|
-| [`PlexService.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt) | Retrofit API interface |
-| [`PlexMediaRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexMediaRepository.kt) | Plex content access |
-| [`PlexLoginRepo.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) | Authentication handling |
-| [`PlexConfig.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) | Server configuration |
-| [`PlexInterceptor.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) | HTTP header injection |
+| [`PlexService.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt) | Retrofit API interface |
+| [`PlexMediaRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexMediaRepository.kt) | Plex content access |
+| [`PlexLoginRepo.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) | Authentication handling |
+| [`PlexConfig.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) | Server configuration |
+| [`PlexInterceptor.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) | HTTP header injection |
 
 ### File Cache
 
 | Component | Purpose |
 |-----------|---------|
-| [`CachedFileManager.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/CachedFileManager.kt) | Manages cached/downloaded audio files |
+| [`CachedFileManager.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/CachedFileManager.kt) | Manages cached/downloaded audio files |
 
 ---
 

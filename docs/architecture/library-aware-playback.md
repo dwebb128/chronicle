@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-Chronicle supports multiple accounts and libraries, but playback URL resolution and token injection use a **global singleton [`PlexConfig`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:38)** with a single server URL and token. When content from different libraries (potentially on different servers with different tokens) is played, it always hits the first library's server, causing 404 errors for content from other libraries.
+Chronicle supports multiple accounts and libraries, but playback URL resolution and token injection use a **global singleton [`PlexConfig`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:38)** with a single server URL and token. When content from different libraries (potentially on different servers with different tokens) is played, it always hits the first library's server, causing 404 errors for content from other libraries.
 
 ### Root Cause
 
@@ -16,11 +16,11 @@ From log analysis ([`logs/librarydata.log`](../../logs/librarydata.log)):
 
 ### Affected Code Paths
 
-1. **[`PlaybackUrlResolver.kt:254`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:254)** - `plexConfig.toServerString(streamUrl)` uses global URL
-2. **[`MediaItemTrack.kt:181`](../../app/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt:181)** - `Injector.get().plexConfig().toServerString(media)` uses global PlexConfig
-3. **[`PlexHttpDataSourceFactory.kt:66-71`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt:66)** - reads token from global `plexPrefsRepo`
-4. **[`PlexInterceptor.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:47)** - injects auth headers from global state
-5. **[`PlexSyncScrobbleWorker.kt:70`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt:70)** - has a TODO confirming this is a known Phase 2 enhancement
+1. **[`PlaybackUrlResolver.kt:254`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:254)** - `plexConfig.toServerString(streamUrl)` uses global URL
+2. **[`MediaItemTrack.kt:181`](../../core/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt:181)** - `Injector.get().plexConfig().toServerString(media)` uses global PlexConfig
+3. **[`PlexHttpDataSourceFactory.kt:66-71`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt:66)** - reads token from global `plexPrefsRepo`
+4. **[`PlexInterceptor.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:47)** - injects auth headers from global state
+5. **[`PlexSyncScrobbleWorker.kt:70`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt:70)** - has a TODO confirming this is a known Phase 2 enhancement
 
 ## Solution Overview
 
@@ -53,12 +53,12 @@ graph TD
 
 #### PlaybackUrlResolver Library-Aware API Calls
 
-[`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) now creates library-scoped Retrofit instances for playback decision API calls, consistent with the pattern established in [`PlexProgressReporter`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt).
+[`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) now creates library-scoped Retrofit instances for playback decision API calls, consistent with the pattern established in [`PlexProgressReporter`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt).
 
 **Critical Fix: Metadata Path Format**
 - Plex API expects metadata paths without the `"plex:"` prefix (e.g., `/library/metadata/65`)
 - Chronicle's internal track IDs include the prefix (e.g., `"plex:65"`)
-- The prefix is now stripped **at the API call site only** in [`PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt)
+- The prefix is now stripped **at the API call site only** in [`PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt)
 - Including the prefix in API calls resulted in HTTP 400 errors (Bad Request)
 
 **Library-Scoped Service Pattern**
@@ -67,11 +67,11 @@ graph TD
 - Follows the same `createScopedService()` pattern established in `PlexProgressReporter`
 - Prevents auth token mismatches that caused HTTP 401 errors when playing tracks from non-active libraries
 
-See [`PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for implementation details.
+See [`PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for implementation details.
 
 #### BookRepository Library-Aware Metadata Fetching
 
-[`BookRepository`](../../app/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) has been updated to use library-specific server connections for all metadata operations (as of 2026-02-27):
+[`BookRepository`](../../core/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) has been updated to use library-specific server connections for all metadata operations (as of 2026-02-27):
 
 **Fixed Methods:**
 1. **`fetchBookAsync(bookId: String, libraryId: String)`** - Now accepts `libraryId` parameter
@@ -104,9 +104,9 @@ scopedService.retrieveAlbum(numericId)
 **Benefits:**
 - Eliminates 404 errors when syncing books from non-active libraries
 - Ensures metadata updates go to the correct Plex server in multi-server setups
-- Consistent with library-aware pattern used in [`TrackRepository`](../../app/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) and [`ChapterRepository`](../../app/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt)
+- Consistent with library-aware pattern used in [`TrackRepository`](../../core/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) and [`ChapterRepository`](../../core/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt)
 
-See [`BookRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) for implementation details.
+See [`BookRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) for implementation details.
 
 #### Library-Aware Thumbnail URLs
 
@@ -118,7 +118,7 @@ Chronicle's UI displays audiobook thumbnails that are hosted on Plex servers. Wi
 - This caused HTTP 404 errors and broken images in the UI
 
 **Solution:**
-[`PlexConfig.makeThumbUriForLibrary()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) resolves library-specific server URLs for thumbnail images:
+[`PlexConfig.makeThumbUriForLibrary()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) resolves library-specific server URLs for thumbnail images:
 
 ```kotlin
 suspend fun makeThumbUriForLibrary(thumb: String, libraryId: String?): String {
@@ -172,7 +172,7 @@ Layout XMLs now pass `libraryId` to the binding adapter:
 
 **Purpose:** Resolves server URL and auth token for a given library ID with caching.
 
-**Location:** `app/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt`
+**Location:** `core/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt`
 
 ```kotlin
 package local.oss.chronicle.data.sources.plex
@@ -351,11 +351,11 @@ class ServerConnectionResolver
 
 ### 2. Update `Library` Entity to Store Server URL
 
-**File:** [`app/src/main/java/local/oss/chronicle/data/model/Library.kt`](../../app/src/main/java/local/oss/chronicle/data/model/Library.kt:30)
+**File:** [`core/src/main/java/local/oss/chronicle/data/model/Library.kt`](../../core/src/main/java/local/oss/chronicle/data/model/Library.kt:30)
 
 **Change:** Add `serverUrl` field if not already present (it exists in the code I reviewed).
 
-**Note:** The [`Library`](../../app/src/main/java/local/oss/chronicle/data/model/Library.kt:30) entity already has `serverId` and `serverName`, but we need to add `serverUrl: String` to store the actual connection URL.
+**Note:** The [`Library`](../../core/src/main/java/local/oss/chronicle/data/model/Library.kt:30) entity already has `serverId` and `serverName`, but we need to add `serverUrl: String` to store the actual connection URL.
 
 **Database Migration Required:** Yes - add column `server_url TEXT NOT NULL DEFAULT ''`
 
@@ -369,7 +369,7 @@ data class Library(
 
 ### 3. Update `PlaybackUrlResolver`
 
-**File:** [`app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:38)
+**File:** [`core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:38)
 
 **Changes:**
 
@@ -526,7 +526,7 @@ private val MediaItemTrack.key: String
 
 ### 4. Update `PlexHttpDataSourceFactory`
 
-**File:** [`app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt:25)
+**File:** [`core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt:25)
 
 **Challenge:** ExoPlayer's `DataSource.Factory` pattern doesn't provide track context at `createDataSource()` time.
 
@@ -584,17 +584,17 @@ class PlexHttpDataSourceFactory(
 
 ### 5. Update `MediaItemTrack.getTrackSource()`
 
-**File:** [`app/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt`](../../app/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt:167)
+**File:** [`core/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt`](../../core/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt:167)
 
 **Current Issue:** Uses global `Injector.get().plexConfig().toServerString(media)`
 
-**Solution:** This is only a fallback path when streaming URL cache is not populated. The primary fix is ensuring [`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:38) populates the cache correctly. We can leave this as-is since it will rarely be used once URL pre-resolution is working.
+**Solution:** This is only a fallback path when streaming URL cache is not populated. The primary fix is ensuring [`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt:38) populates the cache correctly. We can leave this as-is since it will rarely be used once URL pre-resolution is working.
 
 **Alternative (if needed):** Inject `ServerConnectionResolver` and update usage, but this requires making `getTrackSource()` suspend.
 
 ### 6. Update `ServiceModule` to Provide Library-Aware Factory
 
-**File:** [`app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt:152)
+**File:** [`core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt:152)
 
 **Problem:** `plexDataSourceFactory` is currently `@ServiceScope` singleton, but it needs to be recreated per-audiobook to capture library context.
 
@@ -633,7 +633,7 @@ class ServiceModule(private val service: MediaPlayerService) {
 
 ### 7. Update `MediaPlayerService` to Track Library Context
 
-**File:** `app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt`
+**File:** `core/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt`
 
 **Changes:**
 
@@ -815,7 +815,7 @@ sequenceDiagram
 ### Migration Path
 - Database migration adds `serverUrl` column with default empty string
 - Existing libraries will need serverUrl populated during next sync
-- [`LibrarySyncRepository`](../../app/src/main/java/local/oss/chronicle/data/local/LibrarySyncRepository.kt) should be updated to store serverUrl when syncing
+- [`LibrarySyncRepository`](../../core/src/main/java/local/oss/chronicle/data/local/LibrarySyncRepository.kt) should be updated to store serverUrl when syncing
 
 ## Performance Considerations
 
@@ -920,7 +920,7 @@ fun `resolves URLs for tracks from different libraries correctly`() = runTest {
 ## Open Questions & Decisions Needed
 
 ### 1. Library Entity serverUrl Field
-**Question:** Does [`Library`](../../app/src/main/java/local/oss/chronicle/data/model/Library.kt:30) entity already have `serverUrl`?  
+**Question:** Does [`Library`](../../core/src/main/java/local/oss/chronicle/data/model/Library.kt:30) entity already have `serverUrl`?  
 **Answer:** Review shows it has `serverId` and `serverName` but may need explicit `serverUrl`.  
 **Decision:** Add `serverUrl: String` field via database migration.
 
@@ -943,7 +943,7 @@ fun `resolves URLs for tracks from different libraries correctly`() = runTest {
 - Account removed → call `invalidateAll()`
 - Library removed → call `invalidateLibrary(libraryId)`
 - Account credentials updated → call `invalidateAll()`  
-**Implementation:** Use observers in [`AccountManager`](../../app/src/main/java/local/oss/chronicle/features/account/AccountManager.kt) to trigger invalidation.
+**Implementation:** Use observers in [`AccountManager`](../../core/src/main/java/local/oss/chronicle/features/account/AccountManager.kt) to trigger invalidation.
 
 ## Implementation Checklist
 
@@ -974,28 +974,28 @@ fun `resolves URLs for tracks from different libraries correctly`() = runTest {
 ## Related Files
 
 ### Core Implementation
-- [`ServerConnectionResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) - ✅ IMPLEMENTED
-- [`ScopedPlexServiceFactory.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactory.kt) - ✅ IMPLEMENTED
-- [`PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) - ✅ MODIFIED
-- [`PlexHttpDataSourceFactory.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) - ✅ MODIFIED
-- [`Library.kt`](../../app/src/main/java/local/oss/chronicle/data/model/Library.kt) - ✅ MODIFIED (added serverUrl)
-- [`MediaItemTrack.kt`](../../app/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt) - No changes needed
+- [`ServerConnectionResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) - ✅ IMPLEMENTED
+- [`ScopedPlexServiceFactory.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactory.kt) - ✅ IMPLEMENTED
+- [`PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) - ✅ MODIFIED
+- [`PlexHttpDataSourceFactory.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) - ✅ MODIFIED
+- [`Library.kt`](../../core/src/main/java/local/oss/chronicle/data/model/Library.kt) - ✅ MODIFIED (added serverUrl)
+- [`MediaItemTrack.kt`](../../core/src/main/java/local/oss/chronicle/data/model/MediaItemTrack.kt) - No changes needed
 
 ### Dependency Injection
 - [`AppModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/AppModule.kt) - ✅ MODIFIED (added providers)
-- [`ServiceModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) - ✅ MODIFIED (updated factory)
+- [`ServiceModule.kt`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) - ✅ MODIFIED (updated factory)
 
 ### Service Layer
-- [`MediaPlayerService.kt`](../../app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt) - ✅ MODIFIED (tracks library context)
-- [`TrackListStateManager.kt`](../../app/src/main/java/local/oss/chronicle/features/player/TrackListStateManager.kt) - ✅ Already has library context via tracks
+- [`MediaPlayerService.kt`](../../core/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt) - ✅ MODIFIED (tracks library context)
+- [`TrackListStateManager.kt`](../../core/src/main/java/local/oss/chronicle/features/player/TrackListStateManager.kt) - ✅ Already has library context via tracks
 
 ### Data Layer
-- [`TrackRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-26)
-- [`ChapterRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-26)
-- [`BookRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-27)
-- [`LibraryRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/LibraryRepository.kt) - ✅ Used by ServerConnectionResolver
-- [`AccountRepository.kt`](../../app/src/main/java/local/oss/chronicle/data/local/AccountRepository.kt) - ✅ Used by ServerConnectionResolver
-- [`CredentialManager.kt`](../../app/src/main/java/local/oss/chronicle/features/account/CredentialManager.kt) - ✅ Used by ServerConnectionResolver
+- [`TrackRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/TrackRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-26)
+- [`ChapterRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/ChapterRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-26)
+- [`BookRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/BookRepository.kt) - ✅ MODIFIED (library-aware, 2026-02-27)
+- [`LibraryRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/LibraryRepository.kt) - ✅ Used by ServerConnectionResolver
+- [`AccountRepository.kt`](../../core/src/main/java/local/oss/chronicle/data/local/AccountRepository.kt) - ✅ Used by ServerConnectionResolver
+- [`CredentialManager.kt`](../../core/src/main/java/local/oss/chronicle/features/account/CredentialManager.kt) - ✅ Used by ServerConnectionResolver
 
 ## References
 
@@ -1004,7 +1004,7 @@ fun `resolves URLs for tracks from different libraries correctly`() = runTest {
 - **Playback Documentation:** [`docs/features/playback.md`](../../docs/features/playback.md)
 - **Multi-Account System:** [`docs/features/account-ui-design.md`](../../docs/features/account-ui-design.md)
 - **Dependency Injection:** [`docs/architecture/dependency-injection.md`](../../docs/architecture/dependency-injection.md)
-- **TODO in Code:** [`PlexSyncScrobbleWorker.kt:70`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt:70)
+- **TODO in Code:** [`PlexSyncScrobbleWorker.kt:70`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt:70)
 
 ---
 

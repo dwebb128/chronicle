@@ -75,7 +75,7 @@ graph TD
 
 **Modified Files:**
 
-- [`PlexConfig.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) - Added `getAvailableConnections()` method to expose connection set
+- [`PlexConfig.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) - Added `getAvailableConnections()` method to expose connection set
 - [`SettingsViewModel.kt`](../../app/src/main/java/local/oss/chronicle/features/settings/SettingsViewModel.kt) - Added tap counter logic and `showDebugDialog` LiveData event
 - [`SettingsFragment.kt`](../../app/src/main/java/local/oss/chronicle/features/settings/SettingsFragment.kt) - Observes debug dialog event and shows the dialog
 - [`ActivityComponent.kt`](../../app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt) - Added `inject(DebugInfoDialogFragment)` for dependency injection

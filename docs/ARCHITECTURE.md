@@ -133,7 +133,7 @@ Chronicle uses Dagger 2 with a three-component hierarchy:
 |-----------|-------|---------|
 | [`AppComponent`](../app/src/main/java/local/oss/chronicle/injection/components/AppComponent.kt) | @Singleton | Application-wide dependencies |
 | [`ActivityComponent`](../app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt) | @ActivityScope | Activity-scoped dependencies |
-| [`ServiceComponent`](../app/src/main/java/local/oss/chronicle/injection/components/ServiceComponent.kt) | @ServiceScope | MediaPlayerService dependencies |
+| [`ServiceComponent`](../core/src/main/java/local/oss/chronicle/injection/components/ServiceComponent.kt) | @ServiceScope | MediaPlayerService dependencies |
 
 → See [Dependency Injection](architecture/dependency-injection.md) for component hierarchy and module details.
 

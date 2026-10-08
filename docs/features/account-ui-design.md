@@ -89,7 +89,7 @@ sequenceDiagram
 
 **LiveData vs StateFlow Exposure:**
 
-- **Business Logic Layer** ([`AccountManager`](../../app/src/main/java/local/oss/chronicle/features/account/AccountManager.kt), [`ActiveLibraryProvider`](../../app/src/main/java/local/oss/chronicle/features/account/ActiveLibraryProvider.kt)): Uses `StateFlow` for reactive state
+- **Business Logic Layer** ([`AccountManager`](../../core/src/main/java/local/oss/chronicle/features/account/AccountManager.kt), [`ActiveLibraryProvider`](../../core/src/main/java/local/oss/chronicle/features/account/ActiveLibraryProvider.kt)): Uses `StateFlow` for reactive state
 - **ViewModel Layer**: Exposes `LiveData` to UI (Android best practice for lifecycle awareness)
 - **Conversion**: ViewModels convert `StateFlow` → `LiveData` via `.asLiveData()`
 
@@ -796,7 +796,7 @@ class ActivityModule(private val activity: AppCompatActivity) {
 
 ### 5.3 AppComponent (No Changes Needed)
 
-[`AccountManager`](../../app/src/main/java/local/oss/chronicle/features/account/AccountManager.kt) and [`ActiveLibraryProvider`](../../app/src/main/java/local/oss/chronicle/features/account/ActiveLibraryProvider.kt) are already provided at `@Singleton` scope via existing modules.
+[`AccountManager`](../../core/src/main/java/local/oss/chronicle/features/account/AccountManager.kt) and [`ActiveLibraryProvider`](../../core/src/main/java/local/oss/chronicle/features/account/ActiveLibraryProvider.kt) are already provided at `@Singleton` scope via existing modules.
 
 ---
 

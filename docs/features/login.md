@@ -56,8 +56,8 @@ sequenceDiagram
 - [`AuthCoordinatorSingleton`](../../app/src/main/java/local/oss/chronicle/features/auth/AuthCoordinatorSingleton.kt) - Cross-component communication bridge
 - [`LoginFragment`](../../app/src/main/java/local/oss/chronicle/features/login/LoginFragment.kt) - Login UI, launches Chrome Custom Tabs
 - [`LoginViewModel`](../../app/src/main/java/local/oss/chronicle/features/login/LoginViewModel.kt) - OAuth state management
-- [`PlexLoginRepo`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) - PIN creation and token polling
-- [`PlexLoginService`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt) - Plex API endpoints
+- [`PlexLoginRepo`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) - PIN creation and token polling
+- [`PlexLoginService`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt) - Plex API endpoints
 - [`pages/.well-known/assetlinks.json`](../../pages/.well-known/assetlinks.json) - Digital Asset Links file for domain verification
 - [`pages/auth/callback/index.html`](../../pages/auth/callback/index.html) - Fallback page when App Links don't work (rare)
 
@@ -107,7 +107,7 @@ flowchart TD
 
 **Implementation**: 
 - [`ChooseServerFragment`](../../app/src/main/java/local/oss/chronicle/features/login/ChooseServerFragment.kt)
-- [`PlexConfig.setPotentialConnections()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt)
+- [`PlexConfig.setPotentialConnections()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt)
 
 ### Library Selection
 

@@ -10,14 +10,14 @@
 This design has been **fully implemented** and tested. The following files were created:
 
 - **Core Implementation:**
-  - [`PlexHttpDataSourceFactory.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) - Custom DataSource.Factory that performs lazy token injection on each HTTP request
-  - [`SecurityUtils.kt`](../../app/src/main/java/local/oss/chronicle/util/SecurityUtils.kt) - Security utilities for header redaction in logs
+  - [`PlexHttpDataSourceFactory.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) - Custom DataSource.Factory that performs lazy token injection on each HTTP request
+  - [`SecurityUtils.kt`](../../core/src/main/java/local/oss/chronicle/util/SecurityUtils.kt) - Security utilities for header redaction in logs
 
 - **Testing:**
-  - [`PlexHttpDataSourceFactoryTest.kt`](../../app/src/test/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactoryTest.kt) - Comprehensive unit tests covering token injection, fallback, and thread safety
+  - [`PlexHttpDataSourceFactoryTest.kt`](../../core/src/test/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactoryTest.kt) - Comprehensive unit tests covering token injection, fallback, and thread safety
 
 - **Integration:**
-  - Updated [`ServiceModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) to provide `PlexHttpDataSourceFactory` instead of `DefaultHttpDataSource.Factory`
+  - Updated [`ServiceModule.kt`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) to provide `PlexHttpDataSourceFactory` instead of `DefaultHttpDataSource.Factory`
 
 ---
 
@@ -53,7 +53,7 @@ This design has been **fully implemented** and tested. The following files were 
 
 ### Current Implementation
 
-In [`ServiceModule.kt:149-179`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt#L149-L179), the `plexDataSourceFactory()` provider method creates a `DefaultHttpDataSource.Factory` and calls `setDefaultRequestProperties()`:
+In [`ServiceModule.kt:149-179`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt#L149-L179), the `plexDataSourceFactory()` provider method creates a `DefaultHttpDataSource.Factory` and calls `setDefaultRequestProperties()`:
 
 ```kotlin
 @Provides
@@ -78,7 +78,7 @@ fun plexDataSourceFactory(plexPrefs: PlexPrefsRepo): DefaultHttpDataSource.Facto
 
 ### The Race Condition
 
-1. **Service Initialization** ([`MediaPlayerService.kt:226-233`](../../app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226-L233)):
+1. **Service Initialization** ([`MediaPlayerService.kt:226-233`](../../core/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226-L233)):
    ```kotlin
    override fun onCreate() {
        super.onCreate()
@@ -107,7 +107,7 @@ fun plexDataSourceFactory(plexPrefs: PlexPrefsRepo): DefaultHttpDataSource.Facto
 
 ### Evidence from PlexInterceptor Pattern
 
-[`PlexInterceptor.kt:47-78`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L47-L78) demonstrates the correct pattern for Retrofit/OkHttp:
+[`PlexInterceptor.kt:47-78`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L47-L78) demonstrates the correct pattern for Retrofit/OkHttp:
 
 ```kotlin
 override fun intercept(chain: Interceptor.Chain): Response {
@@ -138,7 +138,7 @@ To confirm the race condition and track token states during debugging, we'll add
 
 #### Token Hashing Utility
 
-**Location:** `app/src/main/java/local/oss/chronicle/util/SecurityUtils.kt` (new file)
+**Location:** `core/src/main/java/local/oss/chronicle/util/SecurityUtils.kt` (new file)
 
 ```kotlin
 package local.oss.chronicle.util
@@ -202,7 +202,7 @@ fun plexDataSourceFactory(plexPrefs: PlexPrefsRepo): DefaultHttpDataSource.Facto
 
 **2. SharedPreferencesPlexPrefsRepo** - Log when tokens are loaded from disk:
 
-Add to [`SharedPreferencesPlexPrefsRepo.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) getters:
+Add to [`SharedPreferencesPlexPrefsRepo.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) getters:
 
 ```kotlin
 override var accountAuthToken: String
@@ -216,7 +216,7 @@ override var accountAuthToken: String
 
 **3. MediaPlayerService.onCreate()** - Track initialization order:
 
-Add to [`MediaPlayerService.kt:226`](../../app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226):
+Add to [`MediaPlayerService.kt:226`](../../core/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226):
 
 ```kotlin
 override fun onCreate() {
@@ -262,7 +262,7 @@ Create a custom `HttpDataSource.Factory` that reads tokens **lazily** on every `
 
 #### Class Design
 
-**Location:** `app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt` (new file)
+**Location:** `core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt` (new file)
 
 ```kotlin
 package local.oss.chronicle.data.sources.plex
@@ -383,13 +383,13 @@ class PlexHttpDataSourceFactory(
 2. `user.authToken` - User profile token
 3. `accountAuthToken` - Account-level token (fallback)
 
-This matches the logic in [`PlexInterceptor.kt:66-71`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L66-L71).
+This matches the logic in [`PlexInterceptor.kt:66-71`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L66-L71).
 
 ---
 
 ### 3. ServiceModule Integration
 
-Update [`ServiceModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) to use the new factory.
+Update [`ServiceModule.kt`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt) to use the new factory.
 
 #### Before (Current)
 
@@ -456,7 +456,7 @@ Expected result: `AudiobookMediaSessionCallback` or similar classes that build E
 
 #### Unit Tests
 
-**Location:** `app/src/test/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactoryTest.kt` (new file)
+**Location:** `core/src/test/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactoryTest.kt` (new file)
 
 ```kotlin
 package local.oss.chronicle.data.sources.plex
@@ -790,10 +790,10 @@ Currently, tokens are read fresh but never actively refreshed. Consider:
 
 ## References
 
-- **Problem Location:** [`ServiceModule.kt:149-179`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt#L149-L179)
-- **Working Pattern:** [`PlexInterceptor.kt:47-78`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L47-L78)
-- **Service Lifecycle:** [`MediaPlayerService.kt:226-233`](../../app/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226-L233)
-- **Token Storage:** [`SharedPreferencesPlexPrefsRepo.kt:87-93`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt#L87-L93)
+- **Problem Location:** [`ServiceModule.kt:149-179`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt#L149-L179)
+- **Working Pattern:** [`PlexInterceptor.kt:47-78`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt#L47-L78)
+- **Service Lifecycle:** [`MediaPlayerService.kt:226-233`](../../core/src/main/java/local/oss/chronicle/features/player/MediaPlayerService.kt#L226-L233)
+- **Token Storage:** [`SharedPreferencesPlexPrefsRepo.kt:87-93`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt#L87-L93)
 
 ---
 

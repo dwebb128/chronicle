@@ -1164,11 +1164,11 @@ suspend fun resolve(libraryId: String): ServerConnection {
 
 ## References
 
-- [`PlexSyncScrobbleWorker.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) - Current implementation
-- [`ServerConnectionResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) - Library-aware routing
-- [`RetryHandler.kt`](../../app/src/main/java/local/oss/chronicle/util/RetryHandler.kt) - Existing retry utility
-- [`ProgressUpdater.kt`](../../app/src/main/java/local/oss/chronicle/features/player/ProgressUpdater.kt) - Progress polling
-- [`PlaybackStateController.kt`](../../app/src/main/java/local/oss/chronicle/features/player/PlaybackStateController.kt) - State management
+- [`PlexSyncScrobbleWorker.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) - Current implementation
+- [`ServerConnectionResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) - Library-aware routing
+- [`RetryHandler.kt`](../../core/src/main/java/local/oss/chronicle/util/RetryHandler.kt) - Existing retry utility
+- [`ProgressUpdater.kt`](../../core/src/main/java/local/oss/chronicle/features/player/ProgressUpdater.kt) - Progress polling
+- [`PlaybackStateController.kt`](../../core/src/main/java/local/oss/chronicle/features/player/PlaybackStateController.kt) - State management
 - [WorkManager Documentation](https://developer.android.com/topic/libraries/architecture/workmanager)
 - [Retrofit Documentation](https://square.github.io/retrofit/)
 
