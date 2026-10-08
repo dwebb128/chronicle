@@ -16,6 +16,8 @@ The best Android Audiobook Player for Plex. Stream and offline audiobooks hosted
  - Skip silent audio
  - Download books for playing any time, even when offline
  - Basic Android Auto support (playback works but no voice support)
+ - Standalone Wear OS app: browse, download and play on the watch with no phone needed once signed
+   in (see [Building and installing](docs/INSTALLING.md))
  
 ### Screenshots
 
