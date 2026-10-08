@@ -19,12 +19,16 @@ import com.tonyodev.fetch2.FetchConfiguration
 import dagger.Module
 import dagger.Provides
 import kotlinx.coroutines.CoroutineExceptionHandler
+import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.application.LOG_NETWORK_REQUESTS
 import local.oss.chronicle.data.local.*
 import local.oss.chronicle.data.sources.plex.*
 import local.oss.chronicle.features.currentlyplaying.CurrentlyPlaying
 import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingSingleton
 import local.oss.chronicle.features.player.PlaybackStateController
+import local.oss.chronicle.injection.qualifiers.AppVersionName
+import local.oss.chronicle.util.BitmapLoader
+import local.oss.chronicle.util.FrescoBitmapLoader
 import local.oss.chronicle.views.UrlQueryCacheKey
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -255,6 +259,13 @@ class AppModule(private val app: Application) {
     @Singleton
     fun provideCurrentlyPlaying(playbackStateController: PlaybackStateController): CurrentlyPlaying =
         CurrentlyPlayingSingleton(playbackStateController)
+
+    @Provides
+    fun bitmapLoader(frescoBitmapLoader: FrescoBitmapLoader): BitmapLoader = frescoBitmapLoader
+
+    @Provides
+    @AppVersionName
+    fun appVersionName(): String = BuildConfig.VERSION_NAME
 
     @Provides
     @Singleton

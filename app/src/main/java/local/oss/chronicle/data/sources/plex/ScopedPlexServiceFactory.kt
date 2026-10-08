@@ -2,8 +2,8 @@ package local.oss.chronicle.data.sources.plex
 
 import android.os.Build
 import com.squareup.moshi.Moshi
-import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.data.model.ServerConnection
+import local.oss.chronicle.injection.qualifiers.AppVersionName
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -37,6 +37,7 @@ class ScopedPlexServiceFactory
         private val moshi: Moshi,
         private val plexPrefsRepo: PlexPrefsRepo,
         private val plexConfig: PlexConfig,
+        @AppVersionName private val appVersionName: String,
     ) {
         /**
          * Cache key combining server URL and auth token.
@@ -153,7 +154,7 @@ class ScopedPlexServiceFactory
                         .header("X-Plex-Platform", "Android")
                         .header("X-Plex-Provides", "player")
                         .header("X-Plex-Client-Identifier", plexPrefsRepo.uuid)
-                        .header("X-Plex-Version", BuildConfig.VERSION_NAME)
+                        .header("X-Plex-Version", appVersionName)
                         .header("X-Plex-Product", APP_NAME)
                         .header("X-Plex-Platform-Version", Build.VERSION.RELEASE)
                         .header("X-Plex-Session-Identifier", plexConfig.sessionIdentifier)

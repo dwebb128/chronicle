@@ -32,8 +32,8 @@ import local.oss.chronicle.data.local.PrefsRepo.Companion.VIEW_STYLES
 import local.oss.chronicle.data.local.PrefsRepo.Companion.VIEW_STYLE_COVER_GRID
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.sources.plex.model.MediaType
-import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingViewModel.Companion.PLAYBACK_SPEED_DEFAULT
-import local.oss.chronicle.injection.components.AppComponent
+import local.oss.chronicle.data.local.PrefsRepo.Companion.PLAYBACK_SPEED_DEFAULT
+import local.oss.chronicle.injection.components.CoreComponent
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -142,6 +142,8 @@ interface PrefsRepo {
     var debugOnlyDisableLocalProgressTracking: Boolean
 
     companion object {
+        const val PLAYBACK_SPEED_DEFAULT = 1.0f
+
         const val KEY_SYNC_DIR_PATH = "key_sync_location"
         const val KEY_BOOK_COVER_STYLE = "key_book_cover_style"
         const val KEY_APP_OPEN_COUNT = "key_app_open_count"
@@ -194,7 +196,7 @@ class SharedPreferencesPrefsRepo
             get() {
                 val syncLoc = sharedPreferences.getString(KEY_SYNC_DIR_PATH, "")
                 return if (syncLoc.isNullOrEmpty()) {
-                    /** Set default location to first location in [AppComponent.externalDeviceDirs] */
+                    /** Set default location to first location in [CoreComponent.externalDeviceDirs] */
                     val deviceStorage = Injector.get().externalDeviceDirs().first()
                     sharedPreferences.edit()
                         .putString(KEY_SYNC_DIR_PATH, deviceStorage.absolutePath)

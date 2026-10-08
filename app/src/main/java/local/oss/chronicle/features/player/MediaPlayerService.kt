@@ -34,7 +34,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.*
 import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.R
-import local.oss.chronicle.application.ChronicleApplication
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.ITrackRepository
@@ -267,7 +266,7 @@ class MediaPlayerService :
         Timber.d("[TokenInjection] MediaPlayerService.onCreate() starting - about to inject dependencies")
 
         DaggerServiceComponent.builder()
-            .appComponent((application as ChronicleApplication).appComponent)
+            .coreComponent(Injector.get())
             .serviceModule(ServiceModule(this))
             .build()
             .inject(this)

@@ -41,7 +41,7 @@ class ScopedPlexServiceFactoryTest {
         every { plexConfig.sessionIdentifier } returns "test-session-456"
 
         // Create factory with real Moshi and mocked dependencies
-        factory = ScopedPlexServiceFactory(moshi, plexPrefsRepo, plexConfig)
+        factory = ScopedPlexServiceFactory(moshi, plexPrefsRepo, plexConfig, "1.0.0")
     }
 
     @Test

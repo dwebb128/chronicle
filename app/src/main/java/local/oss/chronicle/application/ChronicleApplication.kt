@@ -39,6 +39,7 @@ open class ChronicleApplication : Application() {
 
     init {
         INSTANCE = this
+        Injector.install { appComponent }
     }
 
     private var applicationJob = Job()

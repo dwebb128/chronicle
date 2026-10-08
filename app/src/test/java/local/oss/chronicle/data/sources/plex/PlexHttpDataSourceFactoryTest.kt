@@ -29,7 +29,7 @@ class PlexHttpDataSourceFactoryTest {
         every { mockPlexPrefs.user } returns null
         every { mockPlexPrefs.server } returns null
 
-        factory = PlexHttpDataSourceFactory(mockContext, mockPlexPrefs)
+        factory = PlexHttpDataSourceFactory(mockContext, mockPlexPrefs, "1.0.0")
     }
 
     @Test

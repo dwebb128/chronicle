@@ -4,8 +4,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.request.ImageRequest
 import com.tonyodev.fetch2.Request
 import kotlinx.coroutines.*
 import local.oss.chronicle.R
@@ -14,11 +12,12 @@ import local.oss.chronicle.data.sources.plex.PlexConfig.ConnectionResult.Failure
 import local.oss.chronicle.data.sources.plex.PlexConfig.ConnectionResult.Success
 import local.oss.chronicle.data.sources.plex.PlexConfig.ConnectionState.*
 import local.oss.chronicle.data.sources.plex.model.Connection
+import local.oss.chronicle.injection.qualifiers.AppVersionName
+import local.oss.chronicle.util.BitmapLoader
 import local.oss.chronicle.util.NetworkMonitor
 import local.oss.chronicle.util.NetworkState
 import local.oss.chronicle.util.RetryConfig
 import local.oss.chronicle.util.RetryResult
-import local.oss.chronicle.util.getImage
 import local.oss.chronicle.util.toUri
 import local.oss.chronicle.util.withRetry
 import okhttp3.OkHttpClient
@@ -47,6 +46,8 @@ class PlexConfig
         private val plexPrefsRepo: PlexPrefsRepo,
         private val scopedPlexServiceFactoryProvider: Provider<ScopedPlexServiceFactory>,
         private val networkMonitor: NetworkMonitor,
+        private val bitmapLoader: BitmapLoader,
+        @AppVersionName private val appVersionName: String,
     ) {
         companion object {
             /**
@@ -152,8 +153,8 @@ class PlexConfig
             }
         }
 
-        val plexMediaInterceptor = PlexInterceptor(plexPrefsRepo, this, isLoginService = false)
-        val plexLoginInterceptor = PlexInterceptor(plexPrefsRepo, this, isLoginService = true)
+        val plexMediaInterceptor = PlexInterceptor(plexPrefsRepo, this, isLoginService = false, appVersionName)
+        val plexLoginInterceptor = PlexInterceptor(plexPrefsRepo, this, isLoginService = true, appVersionName)
 
         /** Attempt to load in a cached bitmap for the given thumbnail */
         suspend fun getBitmapFromServer(
@@ -186,11 +187,9 @@ class PlexConfig
             }
 
             Timber.i("Notification thumb uri is: $uri")
-            val imagePipeline = Fresco.getImagePipeline()
             return withContext(Dispatchers.IO) {
-                val request = ImageRequest.fromUri(uri)
                 try {
-                    val bm = imagePipeline.fetchDecodedImage(request, null).getImage()
+                    val bm = bitmapLoader.loadBitmap(uri)
                     Timber.i("Successfully retrieved album art for $thumb")
                     bm
                 } catch (t: Throwable) {

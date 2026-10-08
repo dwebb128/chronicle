@@ -24,8 +24,8 @@ import androidx.media.session.MediaButtonReceiver
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.R
-import local.oss.chronicle.application.MainActivity.Companion.FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING
-import local.oss.chronicle.application.MainActivity.Companion.REQUEST_CODE_OPEN_APP_TO_CURRENTLY_PLAYING
+import local.oss.chronicle.application.LaunchFlags.FLAG_OPEN_ACTIVITY_TO_CURRENTLY_PLAYING
+import local.oss.chronicle.application.LaunchFlags.REQUEST_CODE_OPEN_APP_TO_CURRENTLY_PLAYING
 import local.oss.chronicle.data.local.ITrackRepository
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.model.EMPTY_CHAPTER

@@ -7,7 +7,7 @@ import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
 import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
 import android.support.v4.media.MediaDescriptionCompat
 import androidx.annotation.DrawableRes
-import local.oss.chronicle.BuildConfig
+import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.sources.plex.CONTENT_STYLE_BROWSABLE_HINT
 import local.oss.chronicle.data.sources.plex.CONTENT_STYLE_LIST_ITEM_HINT_VALUE
 import local.oss.chronicle.data.sources.plex.CONTENT_STYLE_PLAYABLE_HINT
@@ -23,7 +23,7 @@ fun makeBrowsable(
     mediaDescription.setTitle(title)
     mediaDescription.setSubtitle(desc)
     mediaDescription.setIconUri(
-        Uri.parse("android.resource://${BuildConfig.APPLICATION_ID}/$iconRes"),
+        drawableUri(iconRes),
     )
     mediaDescription.setMediaId(title)
     val extras = Bundle()
@@ -58,7 +58,7 @@ fun makeMessageItem(
             .setTitle(title)
             .setSubtitle(subtitle)
             .setIconUri(
-                Uri.parse("android.resource://${BuildConfig.APPLICATION_ID}/$iconRes"),
+                drawableUri(iconRes),
             )
             .setMediaId(mediaId)
             .setExtras(extras)
@@ -67,3 +67,8 @@ fun makeMessageItem(
     // When tapped, AudiobookMediaSessionCallback sets an error PlaybackState
     return MediaItem(mediaDescription, FLAG_PLAYABLE)
 }
+
+/** An `android.resource://` URI for one of this app's drawables, for Auto to load. */
+private fun drawableUri(
+    @DrawableRes iconRes: Int,
+): Uri = Uri.parse("android.resource://${Injector.get().applicationContext().packageName}/$iconRes")

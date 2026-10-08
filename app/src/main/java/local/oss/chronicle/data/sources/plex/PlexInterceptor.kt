@@ -1,7 +1,6 @@
 package local.oss.chronicle.data.sources.plex
 
 import android.os.Build
-import local.oss.chronicle.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.Response
 import timber.log.Timber
@@ -15,6 +14,7 @@ class PlexInterceptor(
     private val plexPrefsRepo: PlexPrefsRepo,
     private val plexConfig: PlexConfig,
     private val isLoginService: Boolean,
+    private val appVersionName: String,
 ) : Interceptor {
     init {
         if (isLoginService) {
@@ -55,7 +55,7 @@ class PlexInterceptor(
                 .header("X-Plex-Platform", PLATFORM)
                 .header("X-Plex-Provides", "player")
                 .header("X-Plex-Client-Identifier", plexPrefsRepo.uuid)
-                .header("X-Plex-Version", BuildConfig.VERSION_NAME)
+                .header("X-Plex-Version", appVersionName)
                 .header("X-Plex-Product", PRODUCT)
                 .header("X-Plex-Platform-Version", Build.VERSION.RELEASE)
                 .header("X-Plex-Session-Identifier", plexConfig.sessionIdentifier)
