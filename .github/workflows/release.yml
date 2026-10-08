@@ -19,7 +19,7 @@ jobs:
       - name: Validate version matches tag
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          GRADLE_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          GRADLE_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' wear/build.gradle.kts)
           if [ "$TAG_VERSION" != "$GRADLE_VERSION" ]; then
             echo "❌ Version mismatch!"
             echo "   Tag version: $TAG_VERSION"
@@ -43,7 +43,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ ! -z "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > app/release-keystore.jks
+            echo "$KEYSTORE_BASE64" | base64 --decode > wear/release-keystore.jks
             echo "KEYSTORE_FILE=release-keystore.jks" >> $GITHUB_ENV
           else
             echo "Warning: No keystore found. APK will be signed with debug key."
@@ -67,7 +67,7 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/release/app-release.apk release-artifacts/chronicle-${{ steps.get_version.outputs.VERSION }}.apk
+          cp wear/build/outputs/apk/release/wear-release.apk release-artifacts/chronicle-${{ steps.get_version.outputs.VERSION }}.apk
       
       - name: Generate Changelog
         id: generate_changelog
@@ -115,7 +115,7 @@ jobs:
       
       - name: Update CHANGELOG.md
         run: |
-          CURRENT_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          CURRENT_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' wear/build.gradle.kts)
           RELEASE_DATE=$(date +%Y-%m-%d)
           
           # Read the generated changelog
@@ -158,8 +158,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Parse current version
-          CURRENT_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-          CURRENT_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          CURRENT_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' wear/build.gradle.kts)
+          CURRENT_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' wear/build.gradle.kts)
           
           # Calculate next patch version
           IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
@@ -171,12 +171,12 @@ jobs:
           echo "Next version: $NEXT_VERSION (code: $NEXT_CODE)"
           
           # Update build.gradle.kts
-          sed -i "s/versionName = \"$CURRENT_VERSION\"/versionName = \"$NEXT_VERSION\"/" app/build.gradle.kts
-          sed -i "s/versionCode = $CURRENT_CODE/versionCode = $NEXT_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"$CURRENT_VERSION\"/versionName = \"$NEXT_VERSION\"/" wear/build.gradle.kts
+          sed -i "s/versionCode = $CURRENT_CODE/versionCode = $NEXT_CODE/" wear/build.gradle.kts
           
           # Commit and push (including CHANGELOG.md)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle.kts CHANGELOG.md
+          git add wear/build.gradle.kts CHANGELOG.md
           git commit -m "chore: bump version to $NEXT_VERSION and update CHANGELOG.md"
           git push origin HEAD:main

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chronicle talks to self-hosted Plex Media Server instances, which commonly run on plain HTTP on
+  the user's local network. The X-Plex-Token header (see PlexInterceptor) must never leak over
+  cleartext to a host outside that local network or Plex's own *.plex.direct LAN hostnames.
+
+  IMPORTANT LIMITATION: Android's Network Security Configuration <domain> element only matches an
+  exact hostname (optionally with subdomains) or a literal IP address; it has no CIDR/IP-range
+  syntax, so "only allow cleartext for RFC1918/link-local/loopback addresses" cannot be expressed
+  here (a user's LAN Plex server can be at any address in those ranges, which can't be enumerated
+  ahead of time). Setting base-config to cleartextTrafficPermitted="false" would therefore block
+  ordinary LAN-IP Plex connections outright, breaking the app's primary use case, while providing
+  no real protection (an attacker-controlled hostname is just as unmatched as a private IP would
+  be). Cleartext is left permitted here, as it already effectively was via usesCleartextTraffic,
+  and the real enforcement (refusing to send X-Plex-Token over http to anything that isn't a
+  private/link-local/loopback address or a *.plex.direct host) lives in PlexInterceptor, which can
+  do real IP-range checks that this declarative config cannot.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+
+    <!-- The one part of this policy that Android's declarative config can express correctly:
+         Plex's own LAN-issued hostnames, e.g. 192-168-1-5.<hash>.plex.direct. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">plex.direct</domain>
+    </domain-config>
+</network-security-config>

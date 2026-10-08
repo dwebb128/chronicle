@@ -1,5 +1,7 @@
 # Media Playback
 
+> **STALE:** describes the pre-Wear phone UI; not yet updated for the Wear OS conversion.
+
 This document covers Chronicle's media playback system, including player architecture, state management, thread safety, error handling, sleep timer, speed control, and progress sync.
 
 ## Architecture

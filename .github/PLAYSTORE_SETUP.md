@@ -205,8 +205,8 @@ The workflow will:
 Create version-specific changelogs:
 
 ```
-app/src/main/play/listings/en-US/changelogs/29.txt  # For version code 29
-app/src/main/play/listings/en-US/changelogs/30.txt  # For version code 30
+wear/src/main/play/listings/en-US/changelogs/29.txt  # For version code 29
+wear/src/main/play/listings/en-US/changelogs/30.txt  # For version code 30
 ```
 
 The plugin will automatically use the correct changelog for each version.
@@ -215,7 +215,7 @@ The plugin will automatically use the correct changelog for each version.
 
 If no version-specific file exists, the plugin uses:
 ```
-app/src/main/play/listings/en-US/changelogs/default.txt
+wear/src/main/play/listings/en-US/changelogs/default.txt
 ```
 
 ### Character Limit
@@ -226,7 +226,7 @@ Release notes are limited to **500 characters** including spaces.
 
 ### Update Store Listing
 
-Edit files in `app/src/main/play/listings/en-US/` (or other locales):
+Edit files in `wear/src/main/play/listings/en-US/` (or other locales):
 
 - `title.txt` - App title (50 chars max)
 - `short-description.txt` - Short description (80 chars max)
@@ -234,10 +234,10 @@ Edit files in `app/src/main/play/listings/en-US/` (or other locales):
 
 ### Update Graphics
 
-Add graphics to `app/src/main/play/listings/en-US/graphics/`:
+Add graphics to `wear/src/main/play/listings/en-US/graphics/`:
 
 ```
-app/src/main/play/listings/en-US/graphics/
+wear/src/main/play/listings/en-US/graphics/
 ├── feature-graphic/
 │   └── feature-graphic.png (1024x500)
 └── phone-screenshots/
@@ -245,6 +245,17 @@ app/src/main/play/listings/en-US/graphics/
     ├── 2-library.png
     └── ...
 ```
+
+> **Wear OS note:** since the Wear OS conversion, this app targets watches, not phones. Play
+> Console lists Wear OS as a separate device form factor from phone/tablet, and a Wear OS listing
+> needs its own watch-format screenshots (Play Console currently asks for square or round images
+> sized for a watch display, uploaded under that form factor's own listing section rather than
+> under `phone-screenshots/`). The `phone-screenshots/` directory and layout above is left as-is
+> here because the exact Gradle Play Publisher directory convention for a Wear OS form factor
+> (e.g. whether it expects a sibling `wear-screenshots/` directory, a differently-named directory,
+> or per-form-factor listing configuration in `build.gradle.kts`) has not been verified against the
+> plugin's current documentation or source — confirm this before the first Wear OS Play Store
+> submission.
 
 ### Publish Metadata Changes
 
@@ -269,7 +280,7 @@ app/src/main/play/listings/en-US/graphics/
 
 **Solution:**
 1. Ensure you've created at least one release manually in Play Console
-2. Verify the application ID matches in `app/build.gradle.kts`
+2. Verify the application ID matches in `wear/build.gradle.kts`
 3. Check that service account has access to the specific app
 
 ### Error: "Invalid credentials"
@@ -282,7 +293,7 @@ app/src/main/play/listings/en-US/graphics/
 ### Error: "Version code X has already been used"
 
 **Solution:**
-1. Increment version code in `app/build.gradle.kts`
+1. Increment version code in `wear/build.gradle.kts`
 2. Version codes must be unique and increasing
 
 ### Error: "Track not found"

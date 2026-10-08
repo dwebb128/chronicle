@@ -3,7 +3,7 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['pages/**', 'app/src/main/play/listings/en-US/graphics/**']
+    paths: ['pages/**', 'wear/src/main/play/listings/en-US/graphics/**']
   workflow_dispatch:
 
 permissions:
@@ -27,14 +27,15 @@ jobs:
       
       - name: Copy Play Store graphics to Pages assets
         run: |
+          # TODO(wear-conversion): replace with Wear OS screenshots once captured
           mkdir -p pages/assets/images/
-          cp app/src/main/play/listings/en-US/graphics/feature-graphic/feature-graphic.png pages/assets/images/feature-graphic.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/1-home.png pages/assets/images/home.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/2-library.png pages/assets/images/library.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/3-audiobook.png pages/assets/images/audiobook.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/4-currentlyplaying.png pages/assets/images/playing.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/5-search.png pages/assets/images/search.png
-          cp app/src/main/play/listings/en-US/graphics/phone-screenshots/6-settings.png pages/assets/images/settings.png
+          cp wear/src/main/play/listings/en-US/graphics/feature-graphic/feature-graphic.png pages/assets/images/feature-graphic.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/1-home.png pages/assets/images/home.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/2-library.png pages/assets/images/library.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/3-audiobook.png pages/assets/images/audiobook.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/4-currentlyplaying.png pages/assets/images/playing.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/5-search.png pages/assets/images/search.png
+          cp wear/src/main/play/listings/en-US/graphics/phone-screenshots/6-settings.png pages/assets/images/settings.png
       
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
