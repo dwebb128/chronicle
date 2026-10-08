@@ -147,7 +147,7 @@ class ScopedPlexServiceFactory
          */
         private fun createScopedInterceptor(authToken: String): Interceptor {
             return Interceptor { chain ->
-                val request =
+                val requestBuilder =
                     chain.request().newBuilder()
                         .header("Accept", "application/json")
                         .header("X-Plex-Platform", "Android")
@@ -161,8 +161,13 @@ class ScopedPlexServiceFactory
                         .header("X-Plex-Device", Build.MODEL)
                         .header("X-Plex-Device-Name", Build.MODEL)
                         .header("X-Plex-Client-Profile-Extra", PlexInterceptor.CLIENT_PROFILE_EXTRA)
-                        .header("X-Plex-Token", authToken)
-                        .build()
+                // Same cleartext gate as PlexInterceptor.
+                if (canSendTokenTo(chain.request().url)) {
+                    requestBuilder.header("X-Plex-Token", authToken)
+                } else {
+                    Timber.w("Refusing to send X-Plex-Token over cleartext to a non-local host")
+                }
+                val request = requestBuilder.build()
 
                 try {
                     chain.proceed(request)
