@@ -22,9 +22,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.after
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
@@ -406,4 +408,88 @@ class ProgressUpdaterTest {
 
     // Normal track operation (no mismatch) is already verified by existing tests like
     // "updateProgress reads from PlaybackStateController not database"
+
+    @Test
+    fun `a book genuinely near its end is marked watched once, not once per tick`() =
+        testScope.runTest {
+            val bookId = "plex:100"
+            val trackId = "plex:101"
+            val book = Audiobook(id = bookId, libraryId = "plex:library:1", source = PlexMediaSource.MEDIA_SOURCE_ID_PLEX, title = "Test Book")
+            // 30 minutes total; the tick lands 90 seconds from the end - inside the 2-minute
+            // window and well past the halfway point, so this should count as finished.
+            val bookDurationMs = 30 * 60 * 1000L
+            val trackProgressMs = bookDurationMs - 90_000L
+            val track = MediaItemTrack(id = trackId, parentKey = bookId, title = "Track 1", duration = bookDurationMs, progress = 0L)
+
+            val stateFlow =
+                MutableStateFlow(
+                    PlaybackState(
+                        audiobook = book,
+                        tracks = listOf(track),
+                        currentTrackIndex = 0,
+                        currentTrackPositionMs = trackProgressMs,
+                        isPlaying = true,
+                    ),
+                )
+            whenever(playbackStateController.state).thenReturn(stateFlow)
+
+            // Three ticks in a row, as the real 1-second loop would produce while still inside
+            // the finishing window. updateProgress does its work on Dispatchers.IO, so wait for
+            // each tick to reach updateTrackData (just before the finished check) before the next.
+            for (tick in 1..3) {
+                progressUpdater.updateProgress(
+                    trackId = trackId,
+                    playbackState = MediaPlayerService.PLEX_STATE_PLAYING,
+                    progress = trackProgressMs,
+                    forceNetworkUpdate = false,
+                )
+                verify(bookRepository, timeout(ASYNC_TIMEOUT_MS).times(tick))
+                    .updateTrackData(any(), any(), any(), any())
+            }
+
+            verify(bookRepository, after(SETTLE_MS).times(1)).setWatched(bookId)
+        }
+
+    @Test
+    fun `a book with an implausibly small computed duration is not marked watched`() =
+        testScope.runTest {
+            // A stale or partially-loaded track list can make `bookDuration` far smaller than the
+            // book really is. Here the tick lands within the absolute 2-minute window of that
+            // (wrong) duration, but nowhere near halfway through it by proportion - the shape a
+            // real near-the-end listen never has - so this must not fire.
+            val bookId = "plex:100"
+            val trackId = "plex:101"
+            val book = Audiobook(id = bookId, libraryId = "plex:library:1", source = PlexMediaSource.MEDIA_SOURCE_ID_PLEX, title = "Test Book")
+            val bookDurationMs = 90_000L
+            val trackProgressMs = 5_000L
+            val track = MediaItemTrack(id = trackId, parentKey = bookId, title = "Track 1", duration = bookDurationMs, progress = 0L)
+
+            val stateFlow =
+                MutableStateFlow(
+                    PlaybackState(
+                        audiobook = book,
+                        tracks = listOf(track),
+                        currentTrackIndex = 0,
+                        currentTrackPositionMs = trackProgressMs,
+                        isPlaying = true,
+                    ),
+                )
+            whenever(playbackStateController.state).thenReturn(stateFlow)
+
+            progressUpdater.updateProgress(
+                trackId = trackId,
+                playbackState = MediaPlayerService.PLEX_STATE_PLAYING,
+                progress = trackProgressMs,
+                forceNetworkUpdate = false,
+            )
+            // Wait for the tick to reach the finished check, or `never()` would pass vacuously.
+            verify(bookRepository, timeout(ASYNC_TIMEOUT_MS)).updateTrackData(any(), any(), any(), any())
+
+            verify(bookRepository, after(SETTLE_MS).never()).setWatched(any())
+        }
+
+    private companion object {
+        const val ASYNC_TIMEOUT_MS = 5_000L
+        const val SETTLE_MS = 300L
+    }
 }
