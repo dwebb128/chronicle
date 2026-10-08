@@ -3,3 +3,7 @@ ktlint_code_style = ktlint_official
 ktlint_standard_no-wildcard-imports = disabled
 ktlint_standard_property-naming = disabled
 ktlint_standard_max-line-length = disabled
+
+[wear/**/*.{kt,kts}]
+# Compose UI: @Composable functions are PascalCase by convention.
+ktlint_function_naming_ignore_when_annotated_with = Composable
