@@ -87,28 +87,64 @@ data class MediaItemTrack(
         }
 
         /**
-         * Merges updated local fields with a network copy of the book. Prefers network metadata,
-         * but always preserves local [progress] and [lastViewedAt] to avoid race conditions
-         * where sync operations overwrite in-progress playback.
+         * Merges a network copy of a track with the local one. Network metadata wins throughout;
+         * [progress] and [lastViewedAt] go to whichever side listened last, so a position set on
+         * one device reaches the others signed in to the same account. [cached] is always local — it describes this
+         * device's filesystem and does not exist on the server.
          *
-         * Always retains [cached] field from local copy.
+         * Both sides' [lastViewedAt] are milliseconds; see [PlexDirectory.lastViewedAtMillis] for
+         * why that needs saying.
          *
-         * Note: Local device is the source of truth for playback progress.
+         * One safety net on top of the timestamp comparison: a passive sync (this function called
+         * with [forceUseNetwork] false, e.g. from opening the book details screen) never adopts a
+         * network position that erases most of an already-substantial local one, even when the
+         * network side compares as newer. That comparison assumes both devices' clocks and the
+         * server's are in agreement, and a device whose clock has drifted ahead always looks
+         * "newer" than a server it is in fact behind, silently reverting real progress to whatever the server last had on
+         * file. [isSuspiciousRegression] catches that shape of failure without touching the
+         * explicit "force sync from server" action, which must still be able to move progress
+         * backward on purpose.
          */
         fun merge(
             network: MediaItemTrack,
             local: MediaItemTrack,
             forceUseNetwork: Boolean = false,
         ) = if (forceUseNetwork) {
-            Timber.i("Force using network track: $network")
+            network.copy(cached = local.cached)
+        } else if (network.lastViewedAt > local.lastViewedAt &&
+            !isSuspiciousRegression(network, local)
+        ) {
+            // The server holds a listen this device has not seen, from another device on the account.
+            // Taking its position is the whole point of syncing progress through Plex.
             network.copy(cached = local.cached)
         } else {
-            // Always preserve local progress and lastViewedAt to prevent race conditions
+            // Either this device listened more recently than the server knows about, or the
+            // network side looked newer but its position doesn't hold up — see
+            // [isSuspiciousRegression]. Either way, keep the local position: while playback is
+            // running `ProgressUpdater` writes it every second, so a sync landing mid-playback must
+            // not roll it back to whatever was last scrobbled.
             network.copy(
                 cached = local.cached,
                 lastViewedAt = local.lastViewedAt,
                 progress = local.progress,
             )
+        }
+
+        /**
+         * True when [network]'s progress is small enough, relative to [local]'s, that adopting it
+         * would look to a listener like the book jumped back to (near) the start — the "lost my
+         * place" failure — while [local] already represents a real amount of listening.
+         *
+         * The thresholds are deliberately generous: a genuine intentional rewind on another device
+         * of a minute or two must still cross to this one normally, so this only refuses a network
+         * position that gives back more than half of at least a minute of local progress.
+         */
+        private fun isSuspiciousRegression(
+            network: MediaItemTrack,
+            local: MediaItemTrack,
+        ): Boolean {
+            val regressionGuardMinMs = 60_000L
+            return local.progress > regressionGuardMinMs && network.progress < local.progress / 2
         }
 
         /** Create a [MediaItemTrack] from a Plex model and an index */
@@ -129,7 +165,7 @@ data class MediaItemTrack(
                 progress = networkTrack.viewOffset,
                 media = networkTrack.media[0].part[0].key,
                 album = networkTrack.parentTitle,
-                lastViewedAt = networkTrack.lastViewedAt,
+                lastViewedAt = networkTrack.lastViewedAtMillis,
                 updatedAt = networkTrack.updatedAt,
                 size = networkTrack.media[0].part[0].size,
             )
