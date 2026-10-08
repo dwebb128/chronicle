@@ -375,13 +375,26 @@ class CachedFileManager
          */
         override suspend fun refreshTrackDownloadedStatus() {
             val idToFileMap = HashMap<String, File>()
+            // Fetch downloads in place, so a run that was interrupted — or one still going —
+            // leaves a short file at the final path. Marking that cached sends ExoPlayer at a
+            // truncated file: the start plays, and a seek past the end of what was written
+            // stalls with no error. Compare against the size Plex reported instead of trusting
+            // the filename.
+            val expectedSizes = trackRepository.getAllTracksAsync().associate { it.id to it.size }
             val trackIdsFoundOnDisk =
                 prefsRepo.cachedMediaDir.listFiles(
                     FileFilter {
                         MediaItemTrack.cachedFilePattern.matches(it.name)
                     },
-                )?.map {
+                )?.mapNotNull {
                     val id = MediaItemTrack.getTrackIdFromFileName(it.name)
+                    val expectedSize = expectedSizes[id] ?: 0L
+                    if (expectedSize > 0L && it.length() < expectedSize) {
+                        Timber.i(
+                            "Incomplete download for $id: ${it.length()} of $expectedSize bytes",
+                        )
+                        return@mapNotNull null
+                    }
                     idToFileMap[id] = it
                     id
                 } ?: emptyList()

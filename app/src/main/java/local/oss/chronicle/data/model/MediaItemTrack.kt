@@ -201,9 +201,10 @@ data class MediaItemTrack(
      * @see <a href="https://github.com/[repo]/blob/main/docs/ARCHITECTURE.md#bandwidth-handling">ARCHITECTURE.md - Bandwidth Handling</a>
      */
     fun getTrackSource(): String {
-        return if (cached) {
+        val cachedMediaDir = if (cached) Injector.get().prefsRepo().cachedMediaDir else null
+        return if (cachedMediaDir != null && isCachedFileComplete(cachedMediaDir)) {
             // Use local file if downloaded
-            File(Injector.get().prefsRepo().cachedMediaDir, getCachedFileName()).toURI().toString()
+            File(cachedMediaDir, getCachedFileName()).toURI().toString()
         } else {
             // Check for pre-resolved streaming URL (bandwidth-aware)
             streamingUrlCache[id]?.let { resolvedUrl ->
@@ -229,6 +230,35 @@ data class MediaItemTrack(
             // Build full URL with library-specific server
             buildServerUrl(serverUrl, media)
         }
+    }
+
+    /**
+     * Whether this track's downloaded file is actually on disk and whole.
+     *
+     * [cached] is a database column, and the file it describes can be gone or half-written without
+     * it: a download interrupted partway leaves a short file at the final path, and files deleted
+     * outside the app leave none at all. Either way, handing ExoPlayer a `file://` URI it cannot
+     * fully read surfaces as a source error, or as playback that starts and then stalls on a seek
+     * past what was written — with nothing pointing at the download as the cause. Streaming
+     * instead is always recoverable.
+     *
+     * [size] is what Plex reported for the file; it can be absent (0), in which case existence is
+     * the most that can be checked.
+     */
+    internal fun isCachedFileComplete(cachedMediaDir: File): Boolean {
+        val file = File(cachedMediaDir, getCachedFileName())
+        if (!file.exists()) {
+            Timber.w("Track $id is marked cached but its file is missing; streaming instead")
+            return false
+        }
+        if (size > 0L && file.length() < size) {
+            Timber.w(
+                "Track $id is marked cached but only ${file.length()} of $size bytes " +
+                    "are on disk; streaming instead",
+            )
+            return false
+        }
+        return true
     }
 
     /**
