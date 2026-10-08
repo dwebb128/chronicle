@@ -11,8 +11,6 @@ import com.squareup.seismic.ShakeDetector
 import local.oss.chronicle.R
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.features.player.SleepTimer.SleepTimerAction.*
-import local.oss.chronicle.util.showToast
-import local.oss.chronicle.views.BottomSheetChooser
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -83,13 +81,12 @@ class SimpleSleepTimer
                             ToneGenerator.TONE_CDMA_PIP,
                             shakeOccurredSoundDurationMs,
                         )
-                        showToast(
-                            service,
-                            BottomSheetChooser.FormattableString.from(
+                        Toast
+                            .makeText(
+                                service,
                                 R.string.sleep_timer_extended_message,
-                            ),
-                            Toast.LENGTH_SHORT,
-                        )
+                                Toast.LENGTH_SHORT,
+                            ).show()
                     }
                 },
             )

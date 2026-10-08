@@ -44,6 +44,7 @@ import timber.log.Timber
 class PlexHttpDataSourceFactory(
     private val context: Context,
     private val plexPrefsRepo: PlexPrefsRepo,
+    private val appVersionName: String,
 ) : HttpDataSource.Factory {
     /**
      * ServerConnectionResolver for library-aware token resolution.
@@ -230,7 +231,7 @@ class PlexHttpDataSourceFactory(
                 "X-Plex-Provides" to "player",
                 "X-Plex-Client-Name" to APP_NAME,
                 "X-Plex-Client-Identifier" to plexPrefsRepo.uuid,
-                "X-Plex-Version" to BuildConfig.VERSION_NAME,
+                "X-Plex-Version" to appVersionName,
                 "X-Plex-Product" to APP_NAME,
                 "X-Plex-Platform-Version" to Build.VERSION.RELEASE,
                 "X-Plex-Device" to Build.MODEL,

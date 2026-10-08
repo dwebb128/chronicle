@@ -847,7 +847,7 @@ class CurrentlyPlayingViewModel(
     companion object {
         /** Minimal and maximal allowed playback speed. */
         const val PLAYBACK_SPEED_MIN = 0.5f
-        const val PLAYBACK_SPEED_DEFAULT = 1.0f
+        const val PLAYBACK_SPEED_DEFAULT = PrefsRepo.PLAYBACK_SPEED_DEFAULT
         const val PLAYBACK_SPEED_MAX = 3.0f
     }
 }

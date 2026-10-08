@@ -25,7 +25,7 @@ class PlexConfigThumbnailCacheTest {
     fun setup() {
         plexPrefsRepo = mockk(relaxed = true)
         scopedPlexServiceFactory = mockk(relaxed = true)
-        plexConfig = PlexConfig(plexPrefsRepo, mockk(relaxed = true), mockk(relaxed = true))
+        plexConfig = PlexConfig(plexPrefsRepo, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), "1.0.0")
     }
 
     @Test

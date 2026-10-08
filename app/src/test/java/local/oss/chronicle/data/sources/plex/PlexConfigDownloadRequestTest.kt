@@ -16,7 +16,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PlexConfigDownloadRequestTest {
-    private val plexConfig = PlexConfig(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+    private val plexConfig = PlexConfig(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), "1.0.0")
 
     @Test
     fun `download requests replace any download Fetch already has for the file`() {

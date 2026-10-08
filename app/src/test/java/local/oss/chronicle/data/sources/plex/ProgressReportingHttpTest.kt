@@ -6,6 +6,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import local.oss.chronicle.BuildConfig
 import local.oss.chronicle.data.local.LibraryRepository
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.model.MediaItemTrack
@@ -86,7 +87,7 @@ class ProgressReportingHttpTest {
         // Real factory: real Retrofit, real production header interceptor — plus the
         // capturing interceptor appended so nothing leaves the process.
         val factory =
-            object : ScopedPlexServiceFactory(moshi, plexPrefsRepo, plexConfig) {
+            object : ScopedPlexServiceFactory(moshi, plexPrefsRepo, plexConfig, BuildConfig.VERSION_NAME) {
                 override fun createClient(authToken: String): OkHttpClient =
                     super
                         .createClient(authToken)
