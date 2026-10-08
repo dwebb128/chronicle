@@ -10,6 +10,15 @@ const val PLEX_LOGIN_SERVICE_URL = "https://plex.tv"
 const val PLACEHOLDER_URL = "https://fake-base-url-should-never-be-called.yyy"
 
 interface PlexLoginService {
+    /**
+     * Creates a "plain" (non-`strong`) PIN. Unlike [postAuthPin], the code returned here is short
+     * and human-typeable: it's the code a user reads off a screen and enters at plex.tv/link,
+     * rather than one embedded in a browser-redirect URL. Polling for the resulting auth token
+     * uses the same [getAuthPin] endpoint, keyed by this PIN's `id`.
+     */
+    @POST("https://plex.tv/api/v2/pins.json")
+    suspend fun postLinkPin(): OAuthResponse
+
     @POST("https://plex.tv/api/v2/pins.json?strong=true")
     suspend fun postAuthPin(): OAuthResponse
 
