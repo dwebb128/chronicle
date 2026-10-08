@@ -20,6 +20,10 @@ Chronicle Epilogue is an Android audiobook player that integrates with Plex Medi
     interface that `AppComponent` extends; `ChronicleApplication` installs it at startup.
     Resources used by `:core` code live in `core/src/main/res` and are referenced from `:app` as
     `local.oss.chronicle.core.R`.
+  - `:wear` — the standalone Wear OS app (Compose for Wear OS, minSdk 34) on top of `:core`. It
+    installs its own `CoreComponent` and a watch `PlaybackProfile`; it shares no code with `:app`.
+    See [`docs/architecture/wear-platform.md`](docs/architecture/wear-platform.md) and
+    [`docs/features/wear-ui.md`](docs/features/wear-ui.md).
 - **License:** GPLv3 (code) + All Rights Reserved (branding assets)
 
 For complete project information, see [`README.md`](README.md).
