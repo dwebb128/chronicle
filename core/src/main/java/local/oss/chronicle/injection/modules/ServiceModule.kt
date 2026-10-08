@@ -13,6 +13,7 @@ import android.support.v4.media.session.MediaSessionCompat.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.common.C
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.Module
@@ -25,9 +26,6 @@ import local.oss.chronicle.data.sources.plex.PlexHttpDataSourceFactory
 import local.oss.chronicle.data.sources.plex.PlexPrefsRepo
 import local.oss.chronicle.features.player.*
 import local.oss.chronicle.injection.qualifiers.AppVersionName
-import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_BACK_BUFFER_DURATION_MILLIS
-import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MAX_BUFFER_DURATION_MILLIS
-import local.oss.chronicle.features.player.MediaPlayerService.Companion.EXOPLAYER_MIN_BUFFER_DURATION_MILLIS
 import local.oss.chronicle.injection.scopes.ServiceScope
 import local.oss.chronicle.util.PackageValidator
 import local.oss.chronicle.util.SecurityUtils
@@ -69,31 +67,42 @@ class ServiceModule(private val service: MediaPlayerService) {
 
     @Provides
     @ServiceScope
-    fun exoPlayer(): ExoPlayer =
-        ExoPlayer.Builder(attributedContext)
-            // Disable embedded ID3 metadata parsing (e.g. APIC artwork frames). Chronicle fetches
-            // cover art separately via Plex, and cloning large embedded images into MediaMetadata
-            // caused OutOfMemoryError in MediaMetadata.Builder.maybeSetArtworkData.
-            .setMediaSourceFactory(
-                androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
-                    attributedContext,
-                    androidx.media3.extractor.DefaultExtractorsFactory()
-                        .setMp3ExtractorFlags(
-                            androidx.media3.extractor.mp3.Mp3Extractor.FLAG_DISABLE_ID3_METADATA,
-                        ),
-                ),
-            )
-            .setLoadControl(
+    fun exoPlayer(): ExoPlayer {
+        val profile = PlaybackProfile.current
+        val loadControl =
             // increase buffer size across the board as ExoPlayer defaults are set for video
-            DefaultLoadControl.Builder().setBackBuffer(EXOPLAYER_BACK_BUFFER_DURATION_MILLIS, true)
+            DefaultLoadControl
+                .Builder()
+                .setBackBuffer(profile.backBufferMs, true)
                 .setBufferDurationsMs(
-                    EXOPLAYER_MIN_BUFFER_DURATION_MILLIS,
-                    EXOPLAYER_MAX_BUFFER_DURATION_MILLIS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
-                )
-                .build(),
-        ).build()
+                    profile.minBufferMs,
+                    profile.maxBufferMs,
+                    profile.bufferForPlaybackMs,
+                    profile.bufferForPlaybackAfterRebufferMs,
+                ).setTargetBufferBytes(profile.targetBufferBytes)
+                .build()
+        val player =
+            ExoPlayer
+                .Builder(attributedContext)
+                // Disable embedded ID3 metadata parsing (e.g. APIC artwork frames). Chronicle fetches
+                // cover art separately via Plex, and cloning large embedded images into MediaMetadata
+                // caused OutOfMemoryError in MediaMetadata.Builder.maybeSetArtworkData.
+                .setMediaSourceFactory(
+                    androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                        attributedContext,
+                        androidx.media3.extractor
+                            .DefaultExtractorsFactory()
+                            .setMp3ExtractorFlags(
+                                androidx.media3.extractor.mp3.Mp3Extractor.FLAG_DISABLE_ID3_METADATA,
+                            ),
+                    ),
+                ).setLoadControl(loadControl)
+                .build()
+        if (profile.wakeMode != C.WAKE_MODE_NONE) {
+            player.setWakeMode(profile.wakeMode)
+        }
+        return player
+    }
 
     @Provides
     @ServiceScope
