@@ -12,6 +12,7 @@ import com.github.michaelbull.result.get
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import local.oss.chronicle.R
+import local.oss.chronicle.core.R as CoreR
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.local.IBookRepository
 import local.oss.chronicle.data.local.ITrackRepository
@@ -154,9 +155,9 @@ class AudiobookDetailsViewModel(
     val cacheIconDrawable: LiveData<Int> =
         cacheStatus.map { status ->
             return@map when (status) {
-                CACHING -> R.drawable.ic_cloud_download_white // Doesn't matter, we show a spinner over it
-                NOT_CACHED -> R.drawable.ic_cloud_download_white
-                CACHED -> R.drawable.ic_cloud_done_white
+                CACHING -> CoreR.drawable.ic_cloud_download_white // Doesn't matter, we show a spinner over it
+                NOT_CACHED -> CoreR.drawable.ic_cloud_download_white
+                CACHED -> CoreR.drawable.ic_cloud_done_white
             }
         }
 
