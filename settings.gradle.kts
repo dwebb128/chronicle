@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 rootProject.name = "Chronicle Epilogue"
 include(":app")
 include(":core")
+include(":wear")
