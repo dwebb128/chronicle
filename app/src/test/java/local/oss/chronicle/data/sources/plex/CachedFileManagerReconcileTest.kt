@@ -14,6 +14,7 @@ import local.oss.chronicle.data.local.ITrackRepository
 import local.oss.chronicle.data.local.PrefsRepo
 import local.oss.chronicle.data.model.Audiobook
 import local.oss.chronicle.data.model.MediaItemTrack
+import local.oss.chronicle.data.model.NO_AUDIOBOOK_FOUND_ID
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -22,6 +23,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 /**
  * Tests the filesystem-vs-database reconcile (phantom "downloaded" books).
@@ -218,5 +220,61 @@ class CachedFileManagerReconcileTest {
                     match { it.id == bookId && it.isCached },
                 )
             }
+        }
+
+    @Test
+    fun `refreshDownloadedStatusForBook treats a partially written file as not cached`() =
+        runTest {
+            // Fetch downloads in place, so an interrupted download leaves a short file at the
+            // final path. Its size is checked against what Plex reported.
+            val track =
+                MediaItemTrack(
+                    id = trackId,
+                    parentKey = bookId,
+                    libraryId = "plex:library:1",
+                    title = "Ch 1",
+                    media = "/library/parts/1/1/file.mp3",
+                    size = 100L,
+                    cached = true,
+                )
+            File(tempFolder.root, track.getCachedFileName()).writeBytes(ByteArray(40))
+            val book =
+                Audiobook(
+                    id = bookId,
+                    libraryId = "plex:library:1",
+                    source = 1L,
+                    title = "Book",
+                    author = "A",
+                    duration = 1000L,
+                    isCached = true,
+                )
+
+            coEvery { trackRepository.getTracksForAudiobookAsync(bookId) } returns listOf(track)
+            coEvery { bookRepository.getAudiobookAsync(bookId) } returns book
+
+            manager().refreshDownloadedStatusForBook(bookId)
+
+            coVerify { trackRepository.updateCachedStatus(trackId, false) }
+            coVerify { bookRepository.update(match { it.id == bookId && !it.isCached }) }
+        }
+
+    @Test
+    fun `refreshTrackDownloadedStatus does not mark a partially written file cached`() =
+        runTest {
+            val whole =
+                MediaItemTrack(id = "plex:1", parentKey = bookId, title = "1", media = "/a/1.mp3", size = 100L)
+            val partial =
+                MediaItemTrack(id = "plex:2", parentKey = bookId, title = "2", media = "/a/2.mp3", size = 100L)
+            File(tempFolder.root, whole.getCachedFileName()).writeBytes(ByteArray(100))
+            File(tempFolder.root, partial.getCachedFileName()).writeBytes(ByteArray(40))
+            coEvery { trackRepository.getAllTracksAsync() } returns listOf(whole, partial)
+            coEvery { trackRepository.getCachedTracks() } returns emptyList()
+            coEvery { trackRepository.updateCachedStatus(any(), any()) } returns 1
+            coEvery { trackRepository.getBookIdForTrack(any()) } returns NO_AUDIOBOOK_FOUND_ID
+
+            manager().refreshTrackDownloadedStatus()
+
+            coVerify { trackRepository.updateCachedStatus("plex:1", true) }
+            coVerify(exactly = 0) { trackRepository.updateCachedStatus("plex:2", true) }
         }
 }

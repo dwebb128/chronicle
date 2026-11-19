@@ -102,15 +102,15 @@ class AudiobookMediaSessionCallback
                 val evicted = mutableListOf<String>()
                 val normalized =
                     tracks.map { track ->
-                        val cachedFile = java.io.File(cacheDir, track.getCachedFileName())
+                        val fileIsComplete = track.isCachedFileComplete(cacheDir)
                         if (track.cached) {
-                            if (cachedFile.exists()) {
+                            if (fileIsComplete) {
                                 track
                             } else {
                                 evicted += track.id
                                 track.copy(cached = false)
                             }
-                        } else if (cachedFile.exists()) {
+                        } else if (fileIsComplete) {
                             markedCached += track.id
                             track.copy(cached = true)
                         } else {

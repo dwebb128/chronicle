@@ -439,13 +439,21 @@ class CachedFileManager
         override suspend fun refreshTrackDownloadedStatus() {
             val idToFileMap = HashMap<String, File>()
             adoptLegacyDownloadFiles(prefsRepo.cachedMediaDir)
+            // A file at the final path can be a partial download (Fetch writes in place), so
+            // compare its length with the size Plex reported rather than trusting the name.
+            val expectedSizes = trackRepository.getAllTracksAsync().associate { it.id to it.size }
             val trackIdsFoundOnDisk =
                 prefsRepo.cachedMediaDir.listFiles(
                     FileFilter {
                         MediaItemTrack.cachedFilePattern.matches(it.name)
                     },
-                )?.map {
+                )?.mapNotNull {
                     val id = MediaItemTrack.getTrackIdFromFileName(it.name)
+                    val expectedSize = expectedSizes[id] ?: 0L
+                    if (expectedSize > 0L && it.length() < expectedSize) {
+                        Timber.i("Incomplete download for $id: ${it.length()} of $expectedSize bytes")
+                        return@mapNotNull null
+                    }
                     idToFileMap[id] = it
                     id
                 } ?: emptyList()
@@ -519,19 +527,18 @@ class CachedFileManager
                 if (tracks.isEmpty()) return@withContext
 
                 tracks.forEach { track ->
-                    val fileExists = File(cacheDir, track.getCachedFileName()).exists()
-                    if (track.cached != fileExists) {
+                    val fileComplete = track.isCachedFileComplete(cacheDir)
+                    if (track.cached != fileComplete) {
                         Timber.i(
                             "Reconcile book $bookId: track ${track.id} cached=${track.cached} " +
-                                "but fileExists=$fileExists — correcting",
+                                "but fileComplete=$fileComplete — correcting",
                         )
-                        trackRepository.updateCachedStatus(track.id, fileExists)
+                        trackRepository.updateCachedStatus(track.id, fileComplete)
                     }
                 }
 
-                // Recompute the book-level flag: cached only when every track's file exists.
-                val allCached =
-                    tracks.all { File(cacheDir, it.getCachedFileName()).exists() }
+                // Recompute the book-level flag: cached only when every track's file is whole.
+                val allCached = tracks.all { it.isCachedFileComplete(cacheDir) }
                 val book = bookRepository.getAudiobookAsync(bookId)
                 if (book != null && book.isCached != allCached) {
                     Timber.i("Reconcile book $bookId: isCached ${book.isCached} -> $allCached")

@@ -90,6 +90,7 @@ class OfflinePlaybackTest {
                     media = "/library/parts/1/1/file.mp3",
                     cached = true,
                 )
+            java.io.File(tempFolder.root, cachedTrack.getCachedFileName()).writeBytes(ByteArray(1))
 
             // When: Resolving the streaming URL for a cached track
             val result = playbackUrlResolver.resolveStreamingUrl(cachedTrack)
@@ -118,6 +119,7 @@ class OfflinePlaybackTest {
                     media = "/library/parts/2/1/file.mp3",
                     cached = true,
                 )
+            java.io.File(tempFolder.root, cachedTrack.getCachedFileName()).writeBytes(ByteArray(1))
 
             // When: Resolving the streaming URL
             playbackUrlResolver.resolveStreamingUrl(cachedTrack)

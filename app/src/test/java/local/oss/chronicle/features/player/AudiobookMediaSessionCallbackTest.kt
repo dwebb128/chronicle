@@ -972,6 +972,31 @@ class AudiobookMediaSessionCallbackTest {
     }
 
     @Test
+    fun `reconcileCachedFlagsWithFiles evicts cached track whose file is only partly written`() {
+        val tempDir = Files.createTempDirectory("reconcilePartial").toFile()
+        val track =
+            MediaItemTrack(
+                id = "plex:111",
+                parentKey = "plex:222",
+                libraryId = "plex:library:1",
+                title = "Ch 1",
+                media = "/library/parts/1/1/file.mp3",
+                duration = 1000L,
+                size = 100L,
+                cached = true,
+            )
+        // An interrupted download leaves a short file at the final path.
+        java.io.File(tempDir, track.getCachedFileName()).writeBytes(ByteArray(40) { 1 })
+
+        val (normalized, markedCached, evicted) =
+            AudiobookMediaSessionCallback.reconcileCachedFlagsWithFiles(listOf(track), tempDir)
+
+        assertThat(normalized.single().cached, `is`(false))
+        assertThat(evicted, `is`(listOf("plex:111")))
+        assertThat(markedCached, `is`(emptyList()))
+    }
+
+    @Test
     fun `reconcileCachedFlagsWithFiles keeps genuinely cached tracks on the local file`() {
         val tempDir = Files.createTempDirectory("reconcileOk").toFile()
         val track =
