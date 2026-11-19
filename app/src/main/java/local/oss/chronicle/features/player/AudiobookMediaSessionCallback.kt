@@ -81,6 +81,51 @@ class AudiobookMediaSessionCallback
             // Timeout for resuming from empty state
             private const val RESUME_TIMEOUT_MILLIS = 10_000L // 10 seconds
 
+            /** How long a resume waits for the server's position before using the local one. */
+            internal const val PRE_RESUME_SYNC_TIMEOUT_MILLIS = 3_000L
+
+            /**
+             * Pulls [bookId]'s tracks from the server, merging them into the local DB, before
+             * playback resumes from the saved position.
+             *
+             * Playback reads its start position from the local DB. Without this, a device resumes
+             * from wherever it last merged, which can be well behind a position reached on
+             * another device since; once it starts playing it writes that stale position back
+             * with a fresh timestamp, so it then wins every later merge and overwrites the other
+             * device's progress on the server too. [MediaItemTrack.merge] decides which side's
+             * position is kept.
+             *
+             * Best effort: skipped in offline mode, and bounded by [timeoutMillis] so a slow or
+             * absent network falls back to the local position rather than delaying playback.
+             *
+             * @return true if the server's tracks were merged in
+             */
+            internal suspend fun refreshTracksBeforeResume(
+                bookId: String,
+                offlineMode: Boolean,
+                bookRepository: IBookRepository,
+                trackRepository: ITrackRepository,
+                timeoutMillis: Long = PRE_RESUME_SYNC_TIMEOUT_MILLIS,
+            ): Boolean {
+                if (offlineMode) return false
+                val libraryId = bookRepository.getAudiobookAsync(bookId)?.libraryId ?: return false
+                val result =
+                    try {
+                        withTimeoutOrNull(timeoutMillis) {
+                            trackRepository.loadTracksForAudiobook(bookId, libraryId)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (t: Throwable) {
+                        Timber.w(t, "Couldn't refresh tracks for $bookId before resuming")
+                        null
+                    }
+                if (result == null) {
+                    Timber.w("Server tracks for $bookId not available in time; resuming from local position")
+                }
+                return result?.isOk == true
+            }
+
             /**
              * Reconciles each track's [MediaItemTrack.cached] flag against the filesystem before
              * building the playlist.
@@ -758,6 +803,15 @@ class AudiobookMediaSessionCallback
                 )
             }
             serviceScope.launch {
+                if (startTimeOffsetMillis == USE_SAVED_TRACK_PROGRESS) {
+                    // Resume from the newest position the server knows, not just this device's.
+                    refreshTracksBeforeResume(
+                        bookId = bookId,
+                        offlineMode = prefsRepo.offlineMode,
+                        bookRepository = bookRepository,
+                        trackRepository = trackRepository,
+                    )
+                }
                 val tracks =
                     withContext(Dispatchers.IO) {
                         trackRepository.getTracksForAudiobookAsync(bookId)
