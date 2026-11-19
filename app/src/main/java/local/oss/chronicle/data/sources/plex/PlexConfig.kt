@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.imagepipeline.request.ImageRequest
+import com.tonyodev.fetch2.EnqueueAction
 import com.tonyodev.fetch2.Request
 import kotlinx.coroutines.*
 import local.oss.chronicle.R
@@ -264,6 +265,12 @@ class PlexConfig
                 tag = bookTitle
                 groupId = uniqueBookId
                 addHeader("X-Plex-Token", token)
+                // Fetch keeps its own DB of downloads across process death. With the default
+                // UPDATE_ACCORDINGLY, re-requesting a file whose download was cut short (app
+                // killed mid-download) reuses the old row and resumes from its byte offset, even
+                // though makeRequests has deleted the partial file: the result is a stalled or
+                // corrupt download that only a reinstall cleared. Start such downloads afresh.
+                enqueueAction = EnqueueAction.REPLACE_EXISTING
             }
         }
 
