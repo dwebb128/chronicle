@@ -60,7 +60,8 @@ class ProgressReportingHttpTest {
 
     private lateinit var reporter: PlexProgressReporter
 
-    private val serverUrl = "http://plex.test:32400"
+    // A LAN server: the token is only ever sent over cleartext to a local-network host.
+    private val serverUrl = "http://192.168.1.10:32400"
     private val authToken = "test-plex-token"
     private val clientUuid = "chronicle-client-uuid-123"
 
