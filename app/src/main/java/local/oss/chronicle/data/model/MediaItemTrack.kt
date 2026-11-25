@@ -237,6 +237,24 @@ data class MediaItemTrack(
     }
 
     /**
+     * Whether this track's downloaded file in [cachedMediaDir] is present and whole.
+     *
+     * Fetch downloads in place, so an interrupted (or still-running) download leaves a short file
+     * at the final path. Played from a `file://` URI, the start of it works and a seek past what
+     * was written stalls with no error. [size] is what Plex reported for the file; when it's
+     * unknown (0), existence is all that can be checked.
+     */
+    fun isCachedFileComplete(cachedMediaDir: File): Boolean {
+        val file = File(cachedMediaDir, getCachedFileName())
+        if (!file.exists()) return false
+        if (size > 0L && file.length() < size) {
+            Timber.w("Cached file for $id is incomplete: ${file.length()} of $size bytes")
+            return false
+        }
+        return true
+    }
+
+    /**
      * Returns the playback URL for this track.
      *
      * **BANDWIDTH-AWARE PLAYBACK**:
@@ -258,9 +276,10 @@ data class MediaItemTrack(
      * @see <a href="https://github.com/[repo]/blob/main/docs/ARCHITECTURE.md#bandwidth-handling">ARCHITECTURE.md - Bandwidth Handling</a>
      */
     fun getTrackSource(): String {
-        return if (cached) {
+        val cachedMediaDir = if (cached) Injector.get().prefsRepo().cachedMediaDir else null
+        return if (cachedMediaDir != null && isCachedFileComplete(cachedMediaDir)) {
             // Use local file if downloaded
-            File(Injector.get().prefsRepo().cachedMediaDir, getCachedFileName()).toURI().toString()
+            File(cachedMediaDir, getCachedFileName()).toURI().toString()
         } else {
             // Check for pre-resolved streaming URL (bandwidth-aware)
             streamingUrlCache[id]?.let { resolvedUrl ->

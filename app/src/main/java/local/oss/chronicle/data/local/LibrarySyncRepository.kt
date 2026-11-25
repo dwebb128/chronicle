@@ -247,19 +247,14 @@ class LibrarySyncRepository
                     type = MediaType.ARTIST, // Plex uses "artist" type for audiobook libraries
                     id = numericLibraryId,
                 )
-            val previousLibrary = plexPrefsRepo.library
-            val previousServer = plexPrefsRepo.server
 
-            try {
-                // CRITICAL: Temporarily clear server to force PlexInterceptor to use accountAuthToken
-                // This ensures the correct user token is used when syncing libraries
-                // from different users on the same server. The interceptor prioritizes
-                // server.accessToken over accountAuthToken, so we must clear it to prevent
-                // credential leakage between users.
-                plexPrefsRepo.server = null
-
-                // Temporarily set the current library context
-                plexPrefsRepo.library = plexLibrary
+            // CRITICAL: hide the server (so PlexInterceptor uses accountAuthToken, preventing
+            // credential leakage between users on the same server) and set the library context,
+            // IN MEMORY ONLY via withSyncContext. These used to be written to the persisted prefs
+            // and restored in a finally block; a process death or an overlapping sync in between
+            // left the stored server/library null or wrong, and the next start fell back into
+            // the choose server/library chain -- unusable offline.
+            plexPrefsRepo.withSyncContext(plexLibrary) {
                 Timber.d("syncLibrary: Set library context to ${library.name} (ID: $numericLibraryId)")
 
                 // Now sync with correct credentials AND library context
@@ -275,29 +270,13 @@ class LibrarySyncRepository
                 // Update audiobook count for this library
                 val bookCount = bookRepository.getBookCountForLibrary(library.id)
                 libraryRepository.updateItemCount(library.id, bookCount)
-                Timber.d("syncLibrary: Updated item count to $bookCount for library ${library.name}")
+                Timber.d("Updated item count to $bookCount for library ${library.name}")
 
                 // Sync collections for this library
                 Timber.d("syncLibrary: Refreshing collections...")
                 collectionsRepository.refreshCollectionsPaginated()
 
                 Timber.i("Successfully synced library: ${library.name} from server: ${library.serverName}")
-            } finally {
-                // Restore previous server state
-                plexPrefsRepo.server = previousServer
-                if (previousServer != null) {
-                    Timber.d("syncLibrary: Restored previous server: ${previousServer.name}")
-                } else {
-                    Timber.d("syncLibrary: Cleared server (was null)")
-                }
-
-                // Restore previous library context (if any)
-                plexPrefsRepo.library = previousLibrary
-                if (previousLibrary != null) {
-                    Timber.d("syncLibrary: Restored previous library context: ${previousLibrary.name}")
-                } else {
-                    Timber.d("syncLibrary: Cleared library context")
-                }
             }
         }
 

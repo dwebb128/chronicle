@@ -256,8 +256,11 @@ class PlexLoginRepo
         override fun determineLoginState() {
             val token = plexPrefsRepo.accountAuthToken
             val user: PlexUser? = plexPrefsRepo.user
-            val server: ServerModel? = plexPrefsRepo.server
-            val library: PlexLibrary? = plexPrefsRepo.library
+            // The user's choice, not a library sync's temporary in-memory override: this is
+            // evaluated on every launch, and reading the override (server = null) here would route
+            // into the server chooser, which clears the stored choice.
+            val server: ServerModel? = plexPrefsRepo.chosenServer
+            val library: PlexLibrary? = plexPrefsRepo.chosenLibrary
             Timber.i(
                 """Login state: token = $token,
                     |user token = ${user?.authToken},

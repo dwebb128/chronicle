@@ -19,6 +19,7 @@ import local.oss.chronicle.features.currentlyplaying.CurrentlyPlaying
 import local.oss.chronicle.features.player.ProgressUpdater.Companion.BOOK_FINISHED_END_OFFSET_MILLIS
 import local.oss.chronicle.features.player.ProgressUpdater.Companion.NETWORK_CALL_FREQUENCY
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
@@ -88,6 +89,17 @@ class SimpleProgressUpdater
 
         /** Tracks the number of times [updateLocalProgress] has been called this session */
         private var tickCounter = 0L
+
+        /**
+         * Book IDs already marked finished this service session, so the near-the-end check below
+         * fires [bookRepository.setWatched] once per listen rather than on every one-second tick
+         * for the whole final [BOOK_FINISHED_END_OFFSET_MILLIS] of a book — each call also hits the
+         * Plex server. A fresh service instance clears this, which is fine: it only needs to hold
+         * for one continuous playback session, and a new session re-evaluates from a fresh position
+         * anyway. Concurrent, because [updateProgress] does its work on [Dispatchers.IO] and a
+         * forced update can overlap the regular tick.
+         */
+        private val finishedBookIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         private val handler = Handler(Looper.getMainLooper())
         private val updateProgressAction = { startRegularProgressUpdates() }
@@ -371,7 +383,17 @@ class SimpleProgressUpdater
                 tracks.getDuration(),
                 tracks.size,
             )
-            if (bookDuration - bookProgress <= BOOK_FINISHED_END_OFFSET_MILLIS) {
+            // Both bounds matter: the absolute one alone falsely fires on a book whose duration
+            // was computed too small (a stale or partially-loaded track list, say) paired with
+            // completely ordinary progress; the proportional one alone would fire on a short book
+            // the moment it starts. A bad "finished" here is not cosmetic — it reports watched to
+            // the Plex server and resets progress, which every other device then syncs down as
+            // "back to the start" of a book the listener was nowhere near done with.
+            val looksActuallyFinished =
+                bookDuration > 0 &&
+                    bookDuration - bookProgress <= BOOK_FINISHED_END_OFFSET_MILLIS &&
+                    bookProgress >= bookDuration / 2
+            if (looksActuallyFinished && finishedBookIds.add(bookId)) {
                 Timber.i("Marking $bookId as finished")
                 bookRepository.setWatched(bookId)
             }
