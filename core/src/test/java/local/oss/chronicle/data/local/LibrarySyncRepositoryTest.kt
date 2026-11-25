@@ -83,6 +83,14 @@ class LibrarySyncRepositoryTest {
 
         // Setup default behavior for book and track repositories
         runBlocking {
+            // The mocked prefs repo must actually run the sync block, like the real implementation
+            org.mockito.Mockito.lenient()
+                .`when`(mockPlexPrefsRepo.withSyncContext<Any?>(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
+                .thenAnswer { invocation ->
+                    @Suppress("UNCHECKED_CAST")
+                    val block = invocation.arguments[1] as suspend () -> Any?
+                    runBlocking { block() }
+                }
             whenever(mockBookRepository.getAllBooksAsync()).thenReturn(emptyList())
             whenever(mockTrackRepository.getAllTracksAsync()).thenReturn(emptyList())
         }
@@ -331,5 +339,56 @@ class LibrarySyncRepositoryTest {
             )
         }
 
+    @Test
+    fun `syncLibrary never writes server or library to the persisted prefs`() =
+        runTest {
+            // Regression: syncLibrary used to null the stored server and overwrite the stored library
+            // for the duration of the sync, restoring them in a finally. A process death or an
+            // overlapping sync left the stored choice null/wrong, so the next start (e.g. with the
+            // Plex server down) fell back into the choose server/library chain. The temporary
+            // context must go through withSyncContext (in memory), never the persisted setters.
+            val accountId = "plex:account:abc"
+            val serverId = "server-uuid-99"
+            val library =
+                AccountTestFixtures.createPlexLibrary(
+                    id = "plex:library:9",
+                    accountId = accountId,
+                    serverId = serverId,
+                    name = "Audiobooks",
+                )
+            val account =
+                local.oss.chronicle.data.model.Account(
+                    id = accountId,
+                    providerType = ProviderType.PLEX,
+                    displayName = "Tester",
+                    avatarUrl = null,
+                    credentials = "",
+                    createdAt = 0L,
+                    lastUsedAt = 0L,
+                )
+            val lan = Connection(uri = "http://192.168.1.20:32400", local = true)
+            val plexServer =
+                PlexServer(
+                    name = "Home",
+                    provides = "server",
+                    connections = listOf(lan),
+                    clientIdentifier = serverId,
+                    accessToken = "server-token",
+                    owned = true,
+                )
+            whenever(mockAccountRepository.getAccountById(accountId)).thenReturn(account)
+            whenever(mockCredentialManager.getCredentials(accountId)).thenReturn("user-token")
+            whenever(mockPlexLoginService.resources()).thenReturn(listOf(plexServer))
+            whenever(mockPlexConfig.url).thenReturn(lan.uri)
+            whenever(mockPlexConfig.updateServerForSync(eq(listOf(lan)), eq("server-token")))
+                .thenReturn(true)
+            whenever(mockBookRepository.getBookCountForLibrary(library.id)).thenReturn(0)
 
+            repository.syncLibrary(library)
+
+            org.mockito.kotlin.verify(mockPlexPrefsRepo, org.mockito.kotlin.never()).server = null
+            org.mockito.kotlin.verify(mockPlexPrefsRepo, org.mockito.kotlin.never()).library = null
+            org.mockito.kotlin.verify(mockPlexPrefsRepo, org.mockito.kotlin.never())
+                .library = org.mockito.kotlin.any()
+        }
 }
