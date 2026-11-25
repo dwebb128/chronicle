@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import kotlinx.coroutines.*
 import local.oss.chronicle.R
+import local.oss.chronicle.core.R as CoreR
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.data.model.MediaItemTrack
 import timber.log.Timber
@@ -81,7 +82,7 @@ class MoveSyncLocationWorker(
                     NotificationManager.IMPORTANCE_LOW,
                 )
             notificationChannel.description =
-                applicationContext.getString(R.string.download_channel_description)
+                applicationContext.getString(CoreR.string.download_channel_description)
             notificationManager.createNotificationChannel(notificationChannel)
         }
     }

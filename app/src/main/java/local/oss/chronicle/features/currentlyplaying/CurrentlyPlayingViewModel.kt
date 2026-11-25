@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import local.oss.chronicle.R
+import local.oss.chronicle.core.R as CoreR
 import local.oss.chronicle.application.Injector
 import local.oss.chronicle.application.MILLIS_PER_SECOND
 import local.oss.chronicle.application.SECONDS_PER_MINUTE
@@ -486,7 +487,7 @@ class CurrentlyPlayingViewModel(
                         val toast =
                             Toast.makeText(
                                 Injector.get().applicationContext(),
-                                R.string.skip_forwards_reached_last_chapter,
+                                CoreR.string.skip_forwards_reached_last_chapter,
                                 Toast.LENGTH_LONG,
                             )
                         toast.setGravity(Gravity.BOTTOM, 0, 200)
@@ -508,25 +509,25 @@ class CurrentlyPlayingViewModel(
 
     fun makeJumpForwardsIcon(): Int {
         return when (prefsRepo.jumpForwardSeconds) {
-            10L -> R.drawable.ic_forward_10_white
-            15L -> R.drawable.ic_forward_15_white
-            20L -> R.drawable.ic_forward_20_white
-            30L -> R.drawable.ic_forward_30_white
-            60L -> R.drawable.ic_forward_60_white
-            90L -> R.drawable.ic_forward_90_white
-            else -> R.drawable.ic_forward_30_white
+            10L -> CoreR.drawable.ic_forward_10_white
+            15L -> CoreR.drawable.ic_forward_15_white
+            20L -> CoreR.drawable.ic_forward_20_white
+            30L -> CoreR.drawable.ic_forward_30_white
+            60L -> CoreR.drawable.ic_forward_60_white
+            90L -> CoreR.drawable.ic_forward_90_white
+            else -> CoreR.drawable.ic_forward_30_white
         }
     }
 
     fun makeJumpBackwardsIcon(): Int {
         return when (prefsRepo.jumpBackwardSeconds) {
-            10L -> R.drawable.ic_replay_10_white
-            15L -> R.drawable.ic_replay_15_white
-            20L -> R.drawable.ic_replay_20_white
-            30L -> R.drawable.ic_replay_30_white
-            60L -> R.drawable.ic_replay_60_white
-            90L -> R.drawable.ic_replay_90_white
-            else -> R.drawable.ic_replay_10_white
+            10L -> CoreR.drawable.ic_replay_10_white
+            15L -> CoreR.drawable.ic_replay_15_white
+            20L -> CoreR.drawable.ic_replay_20_white
+            30L -> CoreR.drawable.ic_replay_30_white
+            60L -> CoreR.drawable.ic_replay_60_white
+            90L -> CoreR.drawable.ic_replay_90_white
+            else -> CoreR.drawable.ic_replay_10_white
         }
     }
 
