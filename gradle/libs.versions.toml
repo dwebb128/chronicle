@@ -40,6 +40,12 @@ robolectric = "4.17"
 room = "2.8.5"
 seismic = "1.0.3"
 androidxMedia = "1.7.0"
+activityCompose = "1.13.0"
+coil = "2.7.0"
+composeUi = "1.12.1"
+composeMaterialIcons = "1.7.8"
+wearCompose = "1.7.1"
+wearOngoing = "1.1.0"
 security-crypto = "1.1.0"
 swiperefresh = "1.2.0"
 timber = "5.0.1"
@@ -99,6 +105,20 @@ room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 seismic = { group = "com.squareup", name = "seismic", version.ref = "seismic" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "androidxMedia" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeUi" }
+compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeMaterialIcons" }
+compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "composeUi" }
+compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "composeUi" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "composeUi" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "composeUi" }
+lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
+wear-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "wearCompose" }
+wear-ongoing = { group = "androidx.wear", name = "wear-ongoing", version.ref = "wearOngoing" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
 swiperefresh = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefresh" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
@@ -108,6 +128,7 @@ work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

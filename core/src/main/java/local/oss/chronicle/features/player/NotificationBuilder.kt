@@ -278,7 +278,8 @@ class NotificationBuilder
                     Pair(currentBook.title, currentBook.author)
                 }
 
-            return builder.setContentTitle(titles.first)
+            builder
+                .setContentTitle(titles.first)
                 .setContentText(titles.second)
                 .setContentIntent(controller.sessionActivity)
                 .setDeleteIntent(stopPendingIntent)
@@ -287,7 +288,13 @@ class NotificationBuilder
                 .setLargeIcon(largeIcon)
                 .setStyle(mediaStyle)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .build()
+            PlaybackProfile.current.decorateNowPlayingNotification?.invoke(
+                context,
+                builder,
+                contentPendingIntent,
+                titles.first,
+            )
+            return builder.build()
         }
 
         private fun shouldCreateChannel() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !nowPlayingChannelExists()

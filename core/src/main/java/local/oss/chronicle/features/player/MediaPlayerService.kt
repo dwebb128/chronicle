@@ -182,28 +182,6 @@ class MediaPlayerService :
         private const val CHRONICLE_MEDIA_ROOT_ID = "chronicle_media_root_id"
         private const val CHRONICLE_MEDIA_EMPTY_ROOT = "empty root"
         private const val CHRONICLE_MEDIA_SEARCH_SUPPORTED = "android.media.browse.SEARCH_SUPPORTED"
-
-        /**
-         * Exoplayer back-buffer (millis to keep of playback prior to current location)
-         *
-         * @see DefaultLoadControl.Builder.setBufferDurationsMs
-         */
-        val EXOPLAYER_BACK_BUFFER_DURATION_MILLIS: Int = 120.seconds.inWholeMilliseconds.toInt()
-
-        /**
-         * Exoplayer min-buffer (the minimum millis of buffer which exo will attempt to keep in
-         * memory)
-         *
-         * @see DefaultLoadControl.Builder.setBufferDurationsMs
-         */
-        val EXOPLAYER_MIN_BUFFER_DURATION_MILLIS: Int = 10.seconds.inWholeMilliseconds.toInt()
-
-        /**
-         * Exoplayer max-buffer (the maximum duration of buffer which Exoplayer will store in memory)
-         *
-         * @see DefaultLoadControl.Builder.setBufferDurationsMs
-         */
-        val EXOPLAYER_MAX_BUFFER_DURATION_MILLIS: Int = 360.seconds.inWholeMilliseconds.toInt()
     }
 
     @Inject
