@@ -19,6 +19,7 @@ import local.oss.chronicle.features.currentlyplaying.CurrentlyPlaying
 import local.oss.chronicle.features.player.ProgressUpdater.Companion.BOOK_FINISHED_END_OFFSET_MILLIS
 import local.oss.chronicle.features.player.ProgressUpdater.Companion.NETWORK_CALL_FREQUENCY
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
@@ -95,9 +96,10 @@ class SimpleProgressUpdater
          * for the whole final [BOOK_FINISHED_END_OFFSET_MILLIS] of a book — each call also hits the
          * Plex server. A fresh service instance clears this, which is fine: it only needs to hold
          * for one continuous playback session, and a new session re-evaluates from a fresh position
-         * anyway.
+         * anyway. Concurrent, because [updateProgress] does its work on [Dispatchers.IO] and a
+         * forced update can overlap the regular tick.
          */
-        private val finishedBookIds = mutableSetOf<String>()
+        private val finishedBookIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         private val handler = Handler(Looper.getMainLooper())
         private val updateProgressAction = { startRegularProgressUpdates() }

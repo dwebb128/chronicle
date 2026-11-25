@@ -22,9 +22,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.after
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
@@ -432,18 +434,20 @@ class ProgressUpdaterTest {
             whenever(playbackStateController.state).thenReturn(stateFlow)
 
             // Three ticks in a row, as the real 1-second loop would produce while still inside
-            // the finishing window.
-            repeat(3) {
+            // the finishing window. updateProgress does its work on Dispatchers.IO, so wait for
+            // each tick to reach updateTrackData (just before the finished check) before the next.
+            for (tick in 1..3) {
                 progressUpdater.updateProgress(
                     trackId = trackId,
                     playbackState = MediaPlayerService.PLEX_STATE_PLAYING,
                     progress = trackProgressMs,
                     forceNetworkUpdate = false,
                 )
+                verify(bookRepository, timeout(ASYNC_TIMEOUT_MS).times(tick))
+                    .updateTrackData(any(), any(), any(), any())
             }
-            testScheduler.advanceUntilIdle()
 
-            verify(bookRepository, org.mockito.kotlin.times(1)).setWatched(bookId)
+            verify(bookRepository, after(SETTLE_MS).times(1)).setWatched(bookId)
         }
 
     @Test
@@ -478,8 +482,14 @@ class ProgressUpdaterTest {
                 progress = trackProgressMs,
                 forceNetworkUpdate = false,
             )
-            testScheduler.advanceUntilIdle()
+            // Wait for the tick to reach the finished check, or `never()` would pass vacuously.
+            verify(bookRepository, timeout(ASYNC_TIMEOUT_MS)).updateTrackData(any(), any(), any(), any())
 
-            verify(bookRepository, never()).setWatched(any())
+            verify(bookRepository, after(SETTLE_MS).never()).setWatched(any())
         }
+
+    private companion object {
+        const val ASYNC_TIMEOUT_MS = 5_000L
+        const val SETTLE_MS = 300L
+    }
 }
