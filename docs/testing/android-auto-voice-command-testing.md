@@ -50,7 +50,7 @@ If these invariants are validated, voice commands WILL work:
 
 ### 1. JVM Unit Tests
 
-#### [`PlaybackResumeLogicTest.kt`](../../app/src/test/java/local/oss/chronicle/features/player/PlaybackResumeLogicTest.kt)
+#### [`PlaybackResumeLogicTest.kt`](../../core/src/test/java/local/oss/chronicle/features/player/PlaybackResumeLogicTest.kt)
 **Tests:** 14 | **Focus:** Resume/playback state logic
 
 | Test | Voice Command Validated |
@@ -60,7 +60,7 @@ If these invariants are validated, voice commands WILL work:
 | Multiple pause/play cycles maintain position | Continuous use |
 | State transitions correctly | All transport controls |
 
-#### [`AudiobookMediaSessionCallbackTest.kt`](../../app/src/test/java/local/oss/chronicle/features/player/AudiobookMediaSessionCallbackTest.kt)
+#### [`AudiobookMediaSessionCallbackTest.kt`](../../core/src/test/java/local/oss/chronicle/features/player/AudiobookMediaSessionCallbackTest.kt)
 **Tests:** 25 | **Focus:** MediaSession callback handling
 
 | Test | Voice Command Validated |
@@ -77,7 +77,7 @@ If these invariants are validated, voice commands WILL work:
 
 ### 2. Robolectric Tests
 
-#### [`MediaSessionStateTest.kt`](../../app/src/test/java/local/oss/chronicle/features/player/MediaSessionStateTest.kt)
+#### [`MediaSessionStateTest.kt`](../../core/src/test/java/local/oss/chronicle/features/player/MediaSessionStateTest.kt)
 **Tests:** 11 | **Focus:** MediaSession state validation
 
 | Test | Voice Command Validated |

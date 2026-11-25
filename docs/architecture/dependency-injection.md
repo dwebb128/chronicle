@@ -66,7 +66,7 @@ Created for each activity instance. Provides activity-scoped dependencies and al
 ### ServiceComponent
 
 **Scope:** `@ServiceScope`  
-**File:** [`ServiceComponent.kt`](../../app/src/main/java/local/oss/chronicle/injection/components/ServiceComponent.kt)
+**File:** [`ServiceComponent.kt`](../../core/src/main/java/local/oss/chronicle/injection/components/ServiceComponent.kt)
 
 Created for the MediaPlayerService. Provides all dependencies needed for audio playback.
 
@@ -114,7 +114,7 @@ Provides activity-scoped dependencies:
 
 ### ServiceModule
 
-**File:** [`ServiceModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt)
+**File:** [`ServiceModule.kt`](../../core/src/main/java/local/oss/chronicle/injection/modules/ServiceModule.kt)
 
 Provides MediaPlayerService dependencies:
 
@@ -135,13 +135,13 @@ Located in [`injection/scopes/`](../../app/src/main/java/local/oss/chronicle/inj
 
 ### @ActivityScope
 
-**File:** [`ActivityScope.kt`](../../app/src/main/java/local/oss/chronicle/injection/scopes/ActivityScope.kt)
+**File:** [`ActivityScope.kt`](../../core/src/main/java/local/oss/chronicle/injection/scopes/ActivityScope.kt)
 
 Custom scope annotation for activity-scoped dependencies. Dependencies with this scope are created once per activity instance and shared across all fragments within that activity.
 
 ### @ServiceScope
 
-**File:** [`ServiceScope.kt`](../../app/src/main/java/local/oss/chronicle/injection/scopes/ServiceScope.kt)
+**File:** [`ServiceScope.kt`](../../core/src/main/java/local/oss/chronicle/injection/scopes/ServiceScope.kt)
 
 Custom scope annotation for service-scoped dependencies. Dependencies with this scope are tied to the MediaPlayerService lifecycle.
 
@@ -168,7 +168,7 @@ class ChronicleApplication : Application() {
 
 ### Injector Utility
 
-[`Injector.kt`](../../app/src/main/java/local/oss/chronicle/application/Injector.kt) provides convenient access to components:
+[`Injector.kt`](../../core/src/main/java/local/oss/chronicle/application/Injector.kt) provides convenient access to components:
 
 ```kotlin
 object Injector {

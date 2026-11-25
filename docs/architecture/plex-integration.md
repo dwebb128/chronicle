@@ -15,7 +15,7 @@ Chronicle interacts with two separate Plex endpoints:
 | **plex.tv** | Authentication, account management, server discovery | OAuth flow, user profile |
 | **Plex Media Server** | Content delivery, metadata, streaming | User's server URL |
 
-Both endpoints require proper authentication headers. See [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) for header implementation.
+Both endpoints require proper authentication headers. See [`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) for header implementation.
 
 ---
 
@@ -50,7 +50,7 @@ Formats not in this list will be transcoded by Plex before streaming.
 
 ## Required HTTP Headers
 
-All Plex API requests require specific headers. These are injected by [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt):
+All Plex API requests require specific headers. These are injected by [`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt):
 
 | Header | Purpose | Required |
 |--------|---------|----------|
@@ -120,7 +120,7 @@ This approach provides:
 
 ### Implementation
 
-See [`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for the decision negotiation implementation.
+See [`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for the decision negotiation implementation.
 
 ---
 
@@ -195,7 +195,7 @@ Each server contains multiple `Connection` objects with different URIs.
 
 #### 2. User Selection & Storage
 
-When the user selects a server, [`PlexLoginRepo.chooseServer()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt:151-157) stores all connections:
+When the user selects a server, [`PlexLoginRepo.chooseServer()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt:151-157) stores all connections:
 
 ```kotlin
 // PlexLoginRepo.chooseServer()
@@ -203,11 +203,11 @@ plexConfig.setPotentialConnections(serverModel.connections)
 plexPrefsRepo.server = serverModel
 ```
 
-The connections are persisted to [`SharedPreferences`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt:149-167) as part of the `ServerModel`.
+The connections are persisted to [`SharedPreferences`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt:149-167) as part of the `ServerModel`.
 
 #### 3. Parallel Connection Testing
 
-When the app needs to connect (startup or network change), [`PlexConfig.chooseViableConnections()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:369-465) tests all connections in parallel:
+When the app needs to connect (startup or network change), [`PlexConfig.chooseViableConnections()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:369-465) tests all connections in parallel:
 
 **Key characteristics:**
 - **Sorted by local flag** - Local connections tested first for priority
@@ -245,7 +245,7 @@ while (deferredConnections.any { it.isActive }) {
 
 #### 4. Selected URL Storage
 
-The winning connection URI is stored in [`PlexConfig.url`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:66):
+The winning connection URI is stored in [`PlexConfig.url`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:66):
 
 ```kotlin
 // PlexConfig.connectToServerInternal()
@@ -255,9 +255,9 @@ if (connectionResult is Success && connectionResult.url != PLACEHOLDER_URL) {
 ```
 
 This `url` field is used by:
-- All Plex API calls via [`PlexConfig.toServerString()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:97-107)
-- [`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for streaming URLs
-- Image thumbnail generation via [`PlexConfig.makeThumbUri()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:165-175)
+- All Plex API calls via [`PlexConfig.toServerString()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:97-107)
+- [`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) for streaming URLs
+- Image thumbnail generation via [`PlexConfig.makeThumbUri()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:165-175)
 
 ### Server List Refresh Policy
 
@@ -269,7 +269,7 @@ To prevent stale server connections from accumulating, Chronicle implements time
 
 **Implementation:**
 
-The refresh timestamp is tracked in [`SharedPreferencesPlexPrefsRepo`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) using the `serverListLastRefreshed` property, stored in SharedPreferences.
+The refresh timestamp is tracked in [`SharedPreferencesPlexPrefsRepo`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) using the `serverListLastRefreshed` property, stored in SharedPreferences.
 
 During app startup in [`ChronicleApplication.setupNetwork()`](../../app/src/main/java/local/oss/chronicle/application/ChronicleApplication.kt:136-207), the app:
 
@@ -286,7 +286,7 @@ This approach ensures that:
 
 **Key Files:**
 - [`ChronicleApplication.kt`](../../app/src/main/java/local/oss/chronicle/application/ChronicleApplication.kt) - Implements refresh logic
-- [`SharedPreferencesPlexPrefsRepo.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) - Stores refresh timestamp
+- [`SharedPreferencesPlexPrefsRepo.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt) - Stores refresh timestamp
 
 ### App Startup Connection Refresh
 
@@ -350,7 +350,7 @@ Local connections are identified by the `Connection.local` boolean flag from ple
 
 ### Retry Logic
 
-Connection attempts use exponential backoff retry logic via [`PlexConfig.connectToServerWithRetry()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:280-310):
+Connection attempts use exponential backoff retry logic via [`PlexConfig.connectToServerWithRetry()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:280-310):
 
 **Retry configuration:**
 - **Max attempts:** 3
@@ -361,7 +361,7 @@ Connection attempts use exponential backoff retry logic via [`PlexConfig.connect
 
 ### Connection State Management
 
-[`PlexConfig.connectionState`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:72-85) LiveData exposes connection status to the UI:
+[`PlexConfig.connectionState`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:72-85) LiveData exposes connection status to the UI:
 
 | State | Meaning |
 |-------|---------|
@@ -389,14 +389,14 @@ Filter Logcat by `URL_DEBUG` to trace the entire connection selection flow.
 
 | File | Responsibility |
 |------|----------------|
-| [`PlexConfig.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) | Manages `connectionSet`, tests connections in parallel, stores selected `url` |
-| [`PlexConfig.chooseViableConnections()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:369-465) | Core parallel connection testing logic with timeout |
-| [`PlexConfig.setPotentialConnections()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:177-181) | Sets available connections from server selection or app startup |
+| [`PlexConfig.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) | Manages `connectionSet`, tests connections in parallel, stores selected `url` |
+| [`PlexConfig.chooseViableConnections()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:369-465) | Core parallel connection testing logic with timeout |
+| [`PlexConfig.setPotentialConnections()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:177-181) | Sets available connections from server selection or app startup |
 | [`ChooseServerViewModel.loadServers()`](../../app/src/main/java/local/oss/chronicle/features/login/ChooseServerViewModel.kt:53-76) | Fetches servers from plex.tv during login |
-| [`PlexLoginRepo.chooseServer()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt:151-157) | Handles user server selection, stores connections |
-| [`SharedPreferencesPlexPrefsRepo`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt:133-167) | Persists server and connections to SharedPreferences |
+| [`PlexLoginRepo.chooseServer()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt:151-157) | Handles user server selection, stores connections |
+| [`SharedPreferencesPlexPrefsRepo`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/SharedPreferencesPlexPrefsRepo.kt:133-167) | Persists server and connections to SharedPreferences |
 | [`ChronicleApplication.setupNetwork()`](../../app/src/main/java/local/oss/chronicle/application/ChronicleApplication.kt:136-207) | App startup connection refresh with stored + fresh connection merge |
-| [`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) | Uses `PlexConfig.url` to resolve streaming URLs |
+| [`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) | Uses `PlexConfig.url` to resolve streaming URLs |
 
 ### Connection Endpoint
 
@@ -441,7 +441,7 @@ sequenceDiagram
 
 | Component | Purpose |
 |-----------|---------|
-| [`PlexLoginRepo`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) | Manages OAuth flow and token storage |
+| [`PlexLoginRepo`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexLoginRepo.kt) | Manages OAuth flow and token storage |
 | [`PlexOAuthDialogFragment`](../../app/src/main/java/local/oss/chronicle/features/login/PlexOAuthDialogFragment.kt) | WebView for OAuth UI |
 | [`PlexOAuthViewModel`](../../app/src/main/java/local/oss/chronicle/features/login/PlexOAuthViewModel.kt) | OAuth state management |
 
@@ -455,7 +455,7 @@ Chronicle uses Retrofit for Plex API calls:
 
 ### PlexService Interface
 
-Located in [`PlexService.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt)
+Located in [`PlexService.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexService.kt)
 
 Key endpoints:
 - Library browsing
@@ -470,10 +470,10 @@ Plex API response models in [`data/sources/plex/model/`](../../app/src/main/java
 
 | Model | Purpose |
 |-------|---------|
-| [`PlexMediaContainer`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexMediaContainer.kt) | Standard Plex response wrapper |
-| [`PlexDirectory`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexDirectory.kt) | Library/collection metadata |
-| [`TrackPlexModel`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/TrackPlexModel.kt) | Audio track information |
-| [`PlexChapter`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexChapter.kt) | Chapter marker data |
+| [`PlexMediaContainer`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexMediaContainer.kt) | Standard Plex response wrapper |
+| [`PlexDirectory`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexDirectory.kt) | Library/collection metadata |
+| [`TrackPlexModel`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/TrackPlexModel.kt) | Audio track information |
+| [`PlexChapter`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexChapter.kt) | Chapter marker data |
 
 ---
 
@@ -507,7 +507,7 @@ sequenceDiagram
 
 ### Key Features
 
-- **Library-Aware**: [`PlexProgressReporter`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) routes requests to the correct Plex server per library
+- **Library-Aware**: [`PlexProgressReporter`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) routes requests to the correct Plex server per library
 - **Thread-Safe**: Request-scoped Retrofit instances prevent global state mutation and race conditions
 - **Accurate Durations**: Reports true track duration (no multiplication)
 - **Immediate Pause State**: Pause events reported within 500ms (debounced)
@@ -519,9 +519,9 @@ sequenceDiagram
 
 ### Implementation
 
-- [`PlexSyncScrobbleWorker`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) - `CoroutineWorker` that handles async progress sync
-- [`PlexProgressReporter`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) - Thread-safe, library-aware API calls with request-scoped Retrofit instances
-- [`ProgressUpdater`](../../app/src/main/java/local/oss/chronicle/features/player/ProgressUpdater.kt) - Schedules WorkManager tasks with library context
+- [`PlexSyncScrobbleWorker`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexSyncScrobbleWorker.kt) - `CoroutineWorker` that handles async progress sync
+- [`PlexProgressReporter`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) - Thread-safe, library-aware API calls with request-scoped Retrofit instances
+- [`ProgressUpdater`](../../core/src/main/java/local/oss/chronicle/features/player/ProgressUpdater.kt) - Schedules WorkManager tasks with library context
 
 For detailed architecture, see [Progress Reporting Overhaul](progress-reporting-overhaul.md).
 
