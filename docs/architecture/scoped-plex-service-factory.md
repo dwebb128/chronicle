@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-Both [`PlaybackUrlResolver`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) and [`PlexProgressReporter`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) independently create "scoped" Retrofit instances (per-library, with library-specific base URL and auth token). Both contain a `createScopedService()` method that duplicates the same configuration but does it **incorrectly**.
+Both [`PlaybackUrlResolver`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) and [`PlexProgressReporter`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) independently create "scoped" Retrofit instances (per-library, with library-specific base URL and auth token). Both contain a `createScopedService()` method that duplicates the same configuration but does it **incorrectly**.
 
 ### The Bug
 
@@ -21,17 +21,17 @@ Instead of:
 ```
 
 This causes:
-1. `startMediaSession()` (POST `/playQueues`) fails because [`PlayQueueResponseWrapper`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/PlayQueueResponse.kt) can't be deserialized (Kotlin data classes require `KotlinJsonAdapterFactory`)
+1. `startMediaSession()` (POST `/playQueues`) fails because [`PlayQueueResponseWrapper`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/PlayQueueResponse.kt) can't be deserialized (Kotlin data classes require `KotlinJsonAdapterFactory`)
 2. No play queue is registered with Plex server → `playQueueItemCache` stays empty
 3. `GET /:/timeline` progress updates return HTTP 404 because Plex has no active session
-4. Playback still works because ExoPlayer uses direct file URLs via [`PlexHttpDataSourceFactory`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) (no Moshi needed)
+4. Playback still works because ExoPlayer uses direct file URLs via [`PlexHttpDataSourceFactory`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexHttpDataSourceFactory.kt) (no Moshi needed)
 
 ### Additional Issues
 
 The two implementations also differ in header completeness:
 
 - **PlaybackUrlResolver**: Missing `X-Plex-Session-Identifier` and `X-Plex-Client-Name`, uses wrong `X-Plex-Client-Identifier` (uses `plexConfig.sessionIdentifier` instead of `plexPrefsRepo.uuid`)
-- **PlexProgressReporter**: Has correct headers matching [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt)
+- **PlexProgressReporter**: Has correct headers matching [`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt)
 
 ## Proposed Solution
 
@@ -221,7 +221,7 @@ The existing `@Named(OKHTTP_CLIENT_MEDIA) mediaOkHttpClient` from [`AppModule`](
 .addInterceptor(plexConfig.plexMediaInterceptor)
 ```
 
-[`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) uses `plexConfig.url` which is the **global active server URL** that changes when switching contexts. For scoped services, we need:
+[`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) uses `plexConfig.url` which is the **global active server URL** that changes when switching contexts. For scoped services, we need:
 
 1. **Fixed base URL per instance** (from Retrofit's `baseUrl()`)
 2. **Fixed auth token per instance** (from scoped interceptor)
@@ -267,7 +267,7 @@ private fun createScopedInterceptor(authToken: String): Interceptor {
 
 **Header Alignment**:
 
-This matches [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:49-80) exactly:
+This matches [`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:49-80) exactly:
 
 | Header | Value | Notes |
 |--------|-------|-------|
@@ -278,7 +278,7 @@ This matches [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/dat
 
 **Why `plexPrefsRepo.uuid` not `plexConfig.sessionIdentifier`?**
 
-From [`PlexInterceptor`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:57):
+From [`PlexInterceptor`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt:57):
 ```kotlin
 .header("X-Plex-Client-Identifier", plexPrefsRepo.uuid)
 ```
@@ -449,7 +449,7 @@ Services are cached on first use per `(serverUrl, authToken)` combination. Subse
 
 | Scenario | Action | Trigger Point |
 |----------|--------|---------------|
-| User logs out | `clearCache()` | [`PlexConfig.clear()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:338-343) |
+| User logs out | `clearCache()` | [`PlexConfig.clear()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt:338-343) |
 | Account switched | `clearCache()` | Account switching logic in AccountManager |
 | Auth token refresh | `clearCache()` | Token refresh in PlexLoginRepo |
 | Server connections change | `clearCache()` | Server selection in login flow |
@@ -474,7 +474,7 @@ Services are cached on first use per `(serverUrl, authToken)` combination. Subse
 
 ### Unit Tests
 
-Create [`ScopedPlexServiceFactoryTest.kt`](../../app/src/test/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactoryTest.kt):
+Create [`ScopedPlexServiceFactoryTest.kt`](../../core/src/test/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactoryTest.kt):
 
 ```kotlin
 class ScopedPlexServiceFactoryTest {
@@ -561,19 +561,19 @@ Update existing tests:
 
 ## Migration Checklist
 
-- [ ] Create [`ScopedPlexServiceFactory.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactory.kt)
+- [ ] Create [`ScopedPlexServiceFactory.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/ScopedPlexServiceFactory.kt)
 - [ ] Add provider to [`AppModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/AppModule.kt)
-- [ ] Update [`PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt)
+- [ ] Update [`PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt)
   - [ ] Add `scopedPlexServiceFactory` dependency
   - [ ] Replace `createScopedService()` calls
   - [ ] Remove `createScopedService()` method
   - [ ] Remove `createScopedInterceptor()` method
-- [ ] Update [`PlexProgressReporter.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt)
+- [ ] Update [`PlexProgressReporter.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt)
   - [ ] Add `scopedPlexServiceFactory` dependency
   - [ ] Replace `createScopedService()` calls
   - [ ] Remove `createScopedService()` method
   - [ ] Remove `createScopedInterceptor()` method
-- [ ] Update [`PlexConfig.clear()`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) to call `scopedPlexServiceFactory.clearCache()`
+- [ ] Update [`PlexConfig.clear()`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) to call `scopedPlexServiceFactory.clearCache()`
 - [ ] Write unit tests for `ScopedPlexServiceFactory`
 - [ ] Update integration tests to verify bug fixes
 - [ ] Manual testing:
@@ -585,9 +585,9 @@ Update existing tests:
 
 ## References
 
-- [`PlaybackUrlResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) — Current duplicated implementation
-- [`PlexProgressReporter.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) — Current duplicated implementation
-- [`PlexInterceptor.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) — Header reference
+- [`PlaybackUrlResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlaybackUrlResolver.kt) — Current duplicated implementation
+- [`PlexProgressReporter.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexProgressReporter.kt) — Current duplicated implementation
+- [`PlexInterceptor.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexInterceptor.kt) — Header reference
 - [`AppModule.kt`](../../app/src/main/java/local/oss/chronicle/injection/modules/AppModule.kt) — DI configuration
-- [`ServerConnectionResolver.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) — Resolves library connections
+- [`ServerConnectionResolver.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/ServerConnectionResolver.kt) — Resolves library connections
 - [`docs/architecture/plex-dashboard-activity.md`](plex-dashboard-activity.md) — Play queue requirement context

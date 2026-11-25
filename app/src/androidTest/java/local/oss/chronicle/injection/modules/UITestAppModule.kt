@@ -30,6 +30,9 @@ import local.oss.chronicle.features.currentlyplaying.CurrentlyPlayingSingleton
 import local.oss.chronicle.features.player.MediaPlayerService
 import local.oss.chronicle.features.player.MediaServiceConnection
 import local.oss.chronicle.features.player.PlaybackStateController
+import local.oss.chronicle.injection.qualifiers.AppVersionName
+import local.oss.chronicle.util.BitmapLoader
+import local.oss.chronicle.util.FrescoBitmapLoader
 import local.oss.chronicle.views.UrlQueryCacheKey
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -255,6 +258,13 @@ class UITestAppModule(private val context: Context) {
     @Provides
     @Singleton
     fun provideCachedFileManager(cacheManager: CachedFileManager): ICachedFileManager = cacheManager
+
+    @Provides
+    fun bitmapLoader(frescoBitmapLoader: FrescoBitmapLoader): BitmapLoader = frescoBitmapLoader
+
+    @Provides
+    @AppVersionName
+    fun appVersionName(): String = BuildConfig.VERSION_NAME
 
     @Provides
     @Singleton

@@ -92,13 +92,13 @@ graph TD
 
 **Modified Files:**
 
-- [`PlexConfig.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) - Added `getAvailableConnections()` method to expose connection set
+- [`PlexConfig.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/PlexConfig.kt) - Added `getAvailableConnections()` method to expose connection set
 - [`SettingsViewModel.kt`](../../app/src/main/java/local/oss/chronicle/features/settings/SettingsViewModel.kt) - Added tap counter logic and `showDebugDialog` LiveData event; also added the **Settings → Help & Diagnostics → Connection test** preference that posts the same event
 - [`SettingsFragment.kt`](../../app/src/main/java/local/oss/chronicle/features/settings/SettingsFragment.kt) - Observes debug dialog event and shows the dialog
 - [`ActivityComponent.kt`](../../app/src/main/java/local/oss/chronicle/injection/components/ActivityComponent.kt) - Added `inject(DebugInfoDialogFragment)` for dependency injection
 - [`MainActivity.kt`](../../app/src/main/java/local/oss/chronicle/application/MainActivity.kt) - Terminal playback errors (recovery gave up) render as a Snackbar with a **Run connection test** action that opens the dialog; transient errors still being recovered show a plain toast. The decision is delegated to `PlaybackErrorUiDecider`
 - [`PlaybackErrorUiDecider.kt`](../../app/src/main/java/local/oss/chronicle/features/player/PlaybackErrorUiDecider.kt) - Pure decision unit: only terminal (non-recovering) playback errors offer the inline connection-test action
-- [`PlexMediaContainer.kt`](../../app/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexMediaContainer.kt) - Added optional `version` field so the `/identity` response can supply the Plex server version shown in the diagnostics report
+- [`PlexMediaContainer.kt`](../../core/src/main/java/local/oss/chronicle/data/sources/plex/model/PlexMediaContainer.kt) - Added optional `version` field so the `/identity` response can supply the Plex server version shown in the diagnostics report
 
 ### Tap Detection
 
