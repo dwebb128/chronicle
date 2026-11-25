@@ -2,8 +2,12 @@ package local.oss.chronicle.data.sources.plex
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import local.oss.chronicle.data.model.PlexLibrary
+import local.oss.chronicle.data.model.ServerModel
+import local.oss.chronicle.data.sources.plex.model.MediaType
 import local.oss.chronicle.data.sources.plex.model.OAuthResponse
 import local.oss.chronicle.features.account.AccountManager
 import okhttp3.MediaType.Companion.toMediaType
@@ -320,4 +324,27 @@ class PlexLoginRepoTest {
                 verified,
             )
         }
+
+    @Test
+    fun `login state uses the chosen server and library, not a running sync's override`() {
+        // During a library sync, server reads null and library reads the synced library. The
+        // launch-time login check must still see the user's choice, or it routes into the server
+        // chooser (which clears the stored choice) - a dead end while the server is down.
+        val chosenServer = ServerModel("Server", emptyList(), "id", "token", true)
+        val chosenLibrary = PlexLibrary("Audiobooks", MediaType.ARTIST, "7")
+        val prefs =
+            mockk<PlexPrefsRepo>(relaxed = true) {
+                every { accountAuthToken } returns "account-token"
+                every { user } returns mockk(relaxed = true)
+                every { server } returns null
+                every { library } returns PlexLibrary("Other", MediaType.ARTIST, "99")
+                every { this@mockk.chosenServer } returns chosenServer
+                every { this@mockk.chosenLibrary } returns chosenLibrary
+            }
+        val repo = PlexLoginRepo(prefs, plexLoginService, plexConfig, accountManager)
+
+        repo.determineLoginState()
+
+        assertEquals(IPlexLoginRepo.LoginState.LOGGED_IN_FULLY, repo.loginEvent.value?.peekContent())
+    }
 }

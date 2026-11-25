@@ -423,4 +423,16 @@ class SharedPreferencesPlexPrefsRepoTest {
             assertEquals(listOf("a-start", "a-end", "b-start"), order)
             assertEquals("7", repo.library?.id)
         }
+
+    @Test
+    fun `chosenServer and chosenLibrary ignore a running sync's override`() =
+        runTest {
+            stubStoredServerAndLibrary()
+            val other = PlexLibrary("Other", MediaType.ARTIST, "99")
+
+            repo.withSyncContext(other) {
+                assertEquals("Test Server", repo.chosenServer?.name)
+                assertEquals("7", repo.chosenLibrary?.id)
+            }
+        }
 }

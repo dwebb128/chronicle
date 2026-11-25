@@ -50,6 +50,18 @@ interface PlexPrefsRepo {
     fun clear()
 
     /**
+     * The server the user chose, ignoring a [withSyncContext] override. Use this, not [server],
+     * to decide whether the user has finished choosing (login state): a sync can be running when
+     * it's evaluated.
+     */
+    val chosenServer: ServerModel?
+        get() = server
+
+    /** The library the user chose, ignoring a [withSyncContext] override; see [chosenServer]. */
+    val chosenLibrary: PlexLibrary?
+        get() = library
+
+    /**
      * Runs [block] with [server] reading as null and [library] reading as [syncLibrary], so a
      * background sync can use the account token for another library without changing which
      * server/library the user chose. Implementations that persist should keep the override
@@ -161,9 +173,8 @@ class SharedPreferencesPlexPrefsRepo
                 prefs.edit().putString(PREFS_USER, userString).commit()
             }
 
-        override var library: PlexLibrary?
+        override val chosenLibrary: PlexLibrary?
             get() {
-                if (syncOverrideActive) return syncOverrideLibrary
                 val name = getString(PREFS_LIBRARY_NAME_KEY)
                 val id = getString(PREFS_LIBRARY_ID_KEY)
                 if (name.isEmpty() || id.isEmpty()) {
@@ -171,6 +182,9 @@ class SharedPreferencesPlexPrefsRepo
                 }
                 return PlexLibrary(name, MediaType.ARTIST, id)
             }
+
+        override var library: PlexLibrary?
+            get() = if (syncOverrideActive) syncOverrideLibrary else chosenLibrary
 
             @SuppressLint("ApplySharedPref")
             set(value) {
@@ -185,9 +199,8 @@ class SharedPreferencesPlexPrefsRepo
                     .putString(PREFS_LIBRARY_ID_KEY, value.id).commit()
             }
 
-        override var server: ServerModel?
+        override val chosenServer: ServerModel?
             get() {
-                if (syncOverrideActive) return null
                 val name = getString(PREFS_SERVER_NAME_KEY)
                 val id = getString(PREFS_SERVER_ID_KEY)
                 val token: String = getString(PREFS_SERVER_ACCESS_TOKEN)
@@ -201,6 +214,9 @@ class SharedPreferencesPlexPrefsRepo
 
                 return ServerModel(name, connections, id, token, owned)
             }
+
+        override var server: ServerModel?
+            get() = if (syncOverrideActive) null else chosenServer
 
             @SuppressLint("ApplySharedPref")
             set(value) {
