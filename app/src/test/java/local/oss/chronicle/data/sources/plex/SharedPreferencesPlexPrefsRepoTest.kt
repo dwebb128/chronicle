@@ -3,8 +3,15 @@ package local.oss.chronicle.data.sources.plex
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
 import io.mockk.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import local.oss.chronicle.data.model.PlexLibrary
 import local.oss.chronicle.data.model.ServerModel
 import local.oss.chronicle.data.sources.plex.model.Connection
+import local.oss.chronicle.data.sources.plex.model.MediaType
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -16,6 +23,7 @@ import org.junit.Test
  * Regression test for bug where local flag on server connections was lost during persistence,
  * causing all connections to appear as remote after app restart.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SharedPreferencesPlexPrefsRepoTest {
     private lateinit var mockPrefs: SharedPreferences
     private lateinit var mockEditor: SharedPreferences.Editor
@@ -332,4 +340,87 @@ class SharedPreferencesPlexPrefsRepoTest {
                 !loadedRemoteConnections.first().local,
         )
     }
+
+    private fun stubStoredServerAndLibrary() {
+        every { mockPrefs.getStringSet("local_server_connections", any()) } returns setOf("http://192.168.1.100:32400")
+        every { mockPrefs.getStringSet("remote_server_connections", any()) } returns emptySet()
+        every { mockPrefs.getString("server_name", "") } returns "Test Server"
+        every { mockPrefs.getString("server_id", "") } returns "test-id"
+        every { mockPrefs.getString("library_name", "") } returns "Audiobooks"
+        every { mockPrefs.getString("library_id", "") } returns "7"
+        every { mockPrefs.getString("server_token", "") } returns "test-token"
+        every { mockPrefs.getBoolean("server_owned", true) } returns true
+    }
+
+    /**
+     * Regression: LibrarySyncRepository used to null the stored server and overwrite the stored
+     * library for the length of a sync. If the process died (or two syncs overlapped) the stored
+     * choice stayed corrupted and the next start fell back to the choose server/library screens.
+     */
+    @Test
+    fun `withSyncContext overrides server and library without writing to prefs`() =
+        runTest {
+            stubStoredServerAndLibrary()
+            val other = PlexLibrary("Other", MediaType.ARTIST, "99")
+
+            repo.withSyncContext(other) {
+                assertNull("server is hidden during the sync", repo.server)
+                assertEquals(other, repo.library)
+            }
+
+            verify(exactly = 0) { mockEditor.remove(any()) }
+            verify(exactly = 0) { mockEditor.putString(any(), any()) }
+            verify(exactly = 0) { mockEditor.putStringSet(any(), any()) }
+            verify(exactly = 0) { mockEditor.commit() }
+        }
+
+    @Test
+    fun `stored server and library are visible again after withSyncContext, even when it throws`() =
+        runTest {
+            stubStoredServerAndLibrary()
+            val other = PlexLibrary("Other", MediaType.ARTIST, "99")
+
+            try {
+                repo.withSyncContext(other) { throw IllegalStateException("sync failed") }
+                fail("expected exception")
+            } catch (expected: IllegalStateException) {
+                // expected
+            }
+
+            assertEquals("Test Server", repo.server?.name)
+            assertEquals("7", repo.library?.id)
+        }
+
+    @Test
+    fun `overlapping withSyncContext calls are serialized`() =
+        runTest {
+            stubStoredServerAndLibrary()
+            val release = CompletableDeferred<Unit>()
+            val order = mutableListOf<String>()
+
+            val first =
+                launch {
+                    repo.withSyncContext(PlexLibrary("A", MediaType.ARTIST, "1")) {
+                        order += "a-start"
+                        release.await()
+                        order += "a-end"
+                    }
+                }
+            runCurrent()
+            val second =
+                launch {
+                    repo.withSyncContext(PlexLibrary("B", MediaType.ARTIST, "2")) {
+                        order += "b-start"
+                        assertEquals("2", repo.library?.id)
+                    }
+                }
+            runCurrent()
+            assertEquals(listOf("a-start"), order)
+
+            release.complete(Unit)
+            first.join()
+            second.join()
+            assertEquals(listOf("a-start", "a-end", "b-start"), order)
+            assertEquals("7", repo.library?.id)
+        }
 }

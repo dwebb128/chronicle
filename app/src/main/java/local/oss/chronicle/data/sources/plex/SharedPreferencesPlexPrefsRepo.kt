@@ -3,6 +3,8 @@ package local.oss.chronicle.data.sources.plex
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import local.oss.chronicle.data.model.PlexLibrary
 import local.oss.chronicle.data.model.ServerModel
 import local.oss.chronicle.data.sources.plex.model.Connection
@@ -46,6 +48,32 @@ interface PlexPrefsRepo {
 
     /** Clear all preferences which are handled by PrefsRepo */
     fun clear()
+
+    /**
+     * Runs [block] with [server] reading as null and [library] reading as [syncLibrary], so a
+     * background sync can use the account token for another library without changing which
+     * server/library the user chose. Implementations that persist should keep the override
+     * in memory only: a process death or an overlapping call mid-sync must never leave the
+     * stored choice altered (that sent the app back to the login chain on the next start).
+     *
+     * The default restores the old stored values afterwards and is only meant for non-persisted
+     * implementations.
+     */
+    suspend fun <T> withSyncContext(
+        syncLibrary: PlexLibrary,
+        block: suspend () -> T,
+    ): T {
+        val previousServer = server
+        val previousLibrary = library
+        try {
+            server = null
+            library = syncLibrary
+            return block()
+        } finally {
+            server = previousServer
+            library = previousLibrary
+        }
+    }
 }
 
 /** An implementation of [PlexPrefsRepo] wrapping [SharedPreferences]. */
@@ -71,6 +99,28 @@ class SharedPreferencesPlexPrefsRepo
             const val PREFS_SERVER_LIST_LAST_REFRESHED = "server_list_last_refreshed"
             const val NO_TEMP_ID_FOUND = -1L
         }
+
+        // In-memory only override used by [withSyncContext]; never written to [prefs].
+        private val syncMutex = Mutex()
+
+        @Volatile private var syncOverrideActive = false
+
+        @Volatile private var syncOverrideLibrary: PlexLibrary? = null
+
+        override suspend fun <T> withSyncContext(
+            syncLibrary: PlexLibrary,
+            block: suspend () -> T,
+        ): T =
+            syncMutex.withLock {
+                syncOverrideLibrary = syncLibrary
+                syncOverrideActive = true
+                try {
+                    block()
+                } finally {
+                    syncOverrideActive = false
+                    syncOverrideLibrary = null
+                }
+            }
 
         override val uuid: String
             @SuppressLint("ApplySharedPref")
@@ -113,6 +163,7 @@ class SharedPreferencesPlexPrefsRepo
 
         override var library: PlexLibrary?
             get() {
+                if (syncOverrideActive) return syncOverrideLibrary
                 val name = getString(PREFS_LIBRARY_NAME_KEY)
                 val id = getString(PREFS_LIBRARY_ID_KEY)
                 if (name.isEmpty() || id.isEmpty()) {
@@ -136,6 +187,7 @@ class SharedPreferencesPlexPrefsRepo
 
         override var server: ServerModel?
             get() {
+                if (syncOverrideActive) return null
                 val name = getString(PREFS_SERVER_NAME_KEY)
                 val id = getString(PREFS_SERVER_ID_KEY)
                 val token: String = getString(PREFS_SERVER_ACCESS_TOKEN)
